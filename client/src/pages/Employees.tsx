@@ -190,6 +190,15 @@ export default function Employees() {
     { key: 'email', label: t('employee.email') },
     { key: 'position', label: t('employee.position') },
     {
+      key: 'departmentId',
+      label: t('employee.department') || 'Department',
+      render: (item: Employee) => {
+        if (!item.departmentId) return '-'
+        const dept = departments?.find((d) => d.id === item.departmentId)
+        return dept ? dept.name : `#${item.departmentId}`
+      },
+    },
+    {
       key: 'status',
       label: t('employee.status'),
       render: (item: Employee) => (

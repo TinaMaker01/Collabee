@@ -32,7 +32,12 @@ const formSchema = z.object({
   employeeId: z.string().min(1),
   title: z.string().min(1),
   type: z.string().optional(),
-  url: z.string().url(),
+  url: z
+    .string()
+    .url()
+    .refine((val) => val.startsWith('https://'), {
+      message: 'URL must use secure HTTPS protocol',
+    }),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -159,6 +164,20 @@ export default function Documents() {
       key: 'employeeId',
       label: t('document.employee'),
       render: (item: Document) => getEmployeeName(item.employeeId),
+    },
+    {
+      key: 'url',
+      label: 'Document',
+      render: (item: Document) => (
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-amber-600 hover:text-amber-700 dark:text-amber-400 underline text-sm font-medium"
+        >
+          {t('common.view') || 'View'}
+        </a>
+      ),
     },
   ]
 

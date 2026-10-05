@@ -21,6 +21,13 @@ interface Department {
   managerId: number | null
 }
 
+interface Employee {
+  id: number
+  name: string
+  position?: string | null
+  email?: string
+}
+
 const formSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
@@ -39,6 +46,7 @@ export default function Departments() {
   const [deletingItem, setDeletingItem] = useState<Department | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['departments'], queryFn: () => get<Department[]>('/departments') })
+  const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: () => get<Employee[]>('/employees') })
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -138,6 +146,15 @@ export default function Departments() {
   const columns = [
     { key: 'name', label: t('department.name') },
     { key: 'description', label: t('department.description') },
+    {
+      key: 'managerId',
+      label: t('department.manager') || 'Manager',
+      render: (item: Department) => {
+        if (!item.managerId) return '-'
+        const emp = employees?.find((e) => e.id === item.managerId)
+        return emp ? emp.name : `#${item.managerId}`
+      },
+    },
   ]
 
   return (
@@ -203,7 +220,22 @@ export default function Departments() {
                 {...form.register('description')}
               />
             </div>
-            <FormField name="managerId" label={t('department.manager')} type="number" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('department.manager')}
+              </label>
+              <select
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                {...form.register('managerId')}
+              >
+                <option value="">{t('common.none') || 'None'}</option>
+                {employees?.map((emp) => (
+                  <option key={emp.id} value={emp.id.toString()}>
+                    {emp.name} {emp.position ? `(${emp.position})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"

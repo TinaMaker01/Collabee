@@ -21,8 +21,18 @@ const Admin = lazy(() => import('./pages/Admin'))
 const LeaveBalance = lazy(() => import('./pages/LeaveBalance'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
+const NotFound = lazy(() => import('./pages/NotFound'))
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000,
+      gcTime: 5 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 function App() {
   return (
@@ -121,18 +131,27 @@ function App() {
                       </ErrorBoundary>
                     }
                   />
-                  <Route
-                    path="/admin"
-                    element={
-                      <ErrorBoundary>
-                        <Admin />
-                      </ErrorBoundary>
-                    }
-                  />
+                  <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                    <Route
+                      path="/admin"
+                      element={
+                        <ErrorBoundary>
+                          <Admin />
+                        </ErrorBoundary>
+                      }
+                    />
+                  </Route>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 </Route>
               </Route>
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route
+                path="*"
+                element={
+                  <ErrorBoundary>
+                    <NotFound />
+                  </ErrorBoundary>
+                }
+              />
             </Routes>
           </Suspense>
           <Toaster />

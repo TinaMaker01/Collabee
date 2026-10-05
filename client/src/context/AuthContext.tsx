@@ -8,6 +8,7 @@ interface User {
   name: string
   email: string
   role: string
+  avatarUrl?: string | null
 }
 
 interface AuthContextType {

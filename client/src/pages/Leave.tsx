@@ -36,13 +36,18 @@ const statusColors: Record<string, string> = {
   rejected: 'bg-red-100 text-red-700',
 }
 
-const formSchema = z.object({
-  employeeId: z.string().min(1),
-  type: z.string().min(1),
-  startDate: z.string().min(1),
-  endDate: z.string().min(1),
-  reason: z.string().optional(),
-})
+const formSchema = z
+  .object({
+    employeeId: z.string().min(1),
+    type: z.string().min(1),
+    startDate: z.string().min(1),
+    endDate: z.string().min(1),
+    reason: z.string().optional(),
+  })
+  .refine((data) => new Date(data.startDate) <= new Date(data.endDate), {
+    message: 'End date must be greater than or equal to start date',
+    path: ['endDate'],
+  })
 
 type FormData = z.infer<typeof formSchema>
 

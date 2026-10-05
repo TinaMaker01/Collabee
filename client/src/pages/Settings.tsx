@@ -57,18 +57,57 @@ export default function Settings() {
       </h1>
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
         <div role="region" aria-label={t('settings.profile')}>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
             <UserIcon className="w-5 h-5 text-amber-500" /> {t('settings.profile')}
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            {t('settings.name_label')} {user?.name}
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            {t('settings.email_label')} {user?.email}
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            {t('settings.role_label')} {user?.role}
-          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const fd = new FormData(e.currentTarget)
+              const nameEntry = fd.get('name')
+              const avatarEntry = fd.get('avatarUrl')
+              const name = typeof nameEntry === 'string' ? nameEntry : ''
+              const avatarUrl = typeof avatarEntry === 'string' ? avatarEntry : ''
+              void put('/auth/profile', { name, avatarUrl: avatarUrl || undefined })
+                .then(() => {
+                  toast.success(t('common.save_success'))
+                })
+                .catch((err: unknown) => {
+                  toast.error(err instanceof Error ? err.message : 'Error updating profile')
+                })
+            }}
+            className="space-y-3"
+          >
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                {t('settings.name_label')}
+              </label>
+              <input
+                name="name"
+                defaultValue={user?.name}
+                required
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Avatar URL</label>
+              <input
+                name="avatarUrl"
+                defaultValue={user?.avatarUrl ?? ''}
+                placeholder="https://..."
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              {t('settings.email_label')} {user?.email} • {t('settings.role_label')} {user?.role}
+            </p>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 focus:ring-2 focus:ring-amber-500"
+            >
+              {t('action.save') || 'Save Profile'}
+            </button>
+          </form>
         </div>
         <div className="border-t dark:border-gray-700 pt-4" role="region" aria-label="Language">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, Suspense } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { get, patch } from '../api/client'
 import { toast } from 'sonner'
+import LoadingSpinner from './LoadingSpinner'
 import {
   DashboardIcon,
   EmployeesIcon,
@@ -363,7 +364,9 @@ export default function Layout() {
         </aside>
 
         <main id="main-content" role="main" className="flex-1 p-4 sm:p-6 lg:p-10 dark:text-gray-200">
-          <Outlet />
+          <Suspense fallback={<LoadingSpinner size="lg" />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

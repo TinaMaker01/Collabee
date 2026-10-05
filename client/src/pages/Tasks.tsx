@@ -233,6 +233,24 @@ export default function Tasks() {
       ),
     },
     {
+      key: 'assignedTo',
+      label: t('task.assigned_to') || 'Assignee',
+      render: (item: Task) => {
+        if (!item.assignedTo) return '-'
+        const emp = employees?.find((e) => e.id === item.assignedTo)
+        return emp ? emp.name : `#${item.assignedTo}`
+      },
+    },
+    {
+      key: 'departmentId',
+      label: t('task.department') || 'Department',
+      render: (item: Task) => {
+        if (!item.departmentId) return '-'
+        const dept = departments?.find((d) => d.id === item.departmentId)
+        return dept ? dept.name : `#${item.departmentId}`
+      },
+    },
+    {
       key: 'dueDate',
       label: t('task.due_date'),
       render: (item: Task) => (item.dueDate ? new Date(item.dueDate).toLocaleDateString() : '-'),

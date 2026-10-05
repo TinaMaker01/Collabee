@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { eq } from 'drizzle-orm'
+import { eq, and, inArray, lte, gte } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { leaveRequests, notifications, employees, users } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
@@ -94,6 +94,23 @@ leaveRoute.post('/', zValidator('json', leaveRequestSchema), async (c) => {
         throw new ValidationError('Insufficient sick leave balance')
       if (body.type === 'personal' && balance.personalRemaining < daysRequested)
         throw new ValidationError('Insufficient personal leave balance')
+    }
+
+    // Check for overlapping approved or pending leave requests
+    const [overlapping] = await tx
+      .select({ id: leaveRequests.id })
+      .from(leaveRequests)
+      .where(
+        and(
+          eq(leaveRequests.employeeId, body.employeeId),
+          inArray(leaveRequests.status, ['approved', 'pending']),
+          lte(leaveRequests.startDate, new Date(body.endDate)),
+          gte(leaveRequests.endDate, new Date(body.startDate)),
+        ),
+      )
+
+    if (overlapping) {
+      throw new ValidationError('A leave request already exists for this date range')
     }
 
     const [req] = await tx

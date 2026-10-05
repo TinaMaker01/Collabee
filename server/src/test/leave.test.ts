@@ -22,9 +22,11 @@ vi.mock('../db/index.js', () => ({
         }),
         select: vi.fn().mockReturnValue({
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              groupBy: vi.fn().mockResolvedValue([]),
-            }),
+            where: vi.fn().mockReturnValue(
+              Object.assign(Promise.resolve([]), {
+                groupBy: vi.fn().mockResolvedValue([]),
+              }),
+            ),
           }),
         }),
         update: vi.fn(),

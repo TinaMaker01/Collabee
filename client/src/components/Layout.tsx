@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, Suspense } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -22,6 +22,8 @@ import {
   LoaderIcon,
   LeaveBalanceIcon,
   DocumentIcon,
+  SearchIcon,
+  XIcon,
 } from './icons'
 
 interface Notification {
@@ -76,6 +78,29 @@ export default function Layout() {
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen((prev) => !prev)
+      } else if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [searchOpen])
+
+  const filteredNavItems = useMemo(() => {
+    const available = navItems.filter((item) => item.href !== '/admin' || user?.role === 'admin')
+    if (!searchQuery.trim()) return available
+    const q = searchQuery.toLowerCase().trim()
+    return available.filter((item) => t(item.label).toLowerCase().includes(q) || item.href.toLowerCase().includes(q))
+  }, [searchQuery, user?.role, t])
 
   const notifQuery = useQuery({
     queryKey: ['notifications'],
@@ -153,6 +178,17 @@ export default function Layout() {
             </svg>
           </button>
           <h1 className="text-xl font-bold text-amber-600">Collabee</h1>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 ml-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/60 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            aria-label="Quick search (Cmd+K)"
+          >
+            <SearchIcon className="w-3.5 h-3.5" />
+            <span>{t('action.search')}...</span>
+            <kbd className="font-mono text-[10px] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5">
+              ⌘K
+            </kbd>
+          </button>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -369,6 +405,82 @@ export default function Layout() {
           </Suspense>
         </main>
       </div>
+
+      {searchOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Command palette"
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setSearchOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700 gap-3">
+              <SearchIcon className="w-5 h-5 text-gray-400 shrink-0" />
+              <input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && filteredNavItems.length > 0) {
+                    void navigate(filteredNavItems[0].href)
+                    setSearchOpen(false)
+                    setSearchQuery('')
+                  }
+                }}
+                placeholder={`${t('action.search')}...`}
+                className="flex-1 bg-transparent border-0 outline-none text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0"
+              />
+              <button
+                type="button"
+                onClick={() => setSearchOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded"
+                aria-label={t('common.close')}
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-72 overflow-y-auto p-2">
+              {filteredNavItems.length === 0 ? (
+                <div className="p-4 text-center text-xs text-gray-400">
+                  {t('common.no_data')}
+                </div>
+              ) : (
+                <ul className="space-y-1">
+                  {filteredNavItems.map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <li key={item.href}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigate(item.href)
+                            setSearchOpen(false)
+                            setSearchQuery('')
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                        >
+                          <Icon className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">{t(item.label)}</span>
+                          <span className="ml-auto text-xs text-gray-400 font-mono">{item.href}</span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+            <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 flex items-center justify-between text-[11px] text-gray-400">
+              <span>Navigate with Enter</span>
+              <span>ESC to close</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

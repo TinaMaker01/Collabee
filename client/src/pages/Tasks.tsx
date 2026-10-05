@@ -69,6 +69,7 @@ export default function Tasks() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Task | null>(null)
   const [deletingItem, setDeletingItem] = useState<Task | null>(null)
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table')
 
   const { data, isLoading } = useQuery({ queryKey: ['tasks'], queryFn: () => get<Task[]>('/tasks') })
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: () => get<Employee[]>('/employees') })
@@ -132,6 +133,15 @@ export default function Tasks() {
     mutationFn: (id: number) => del(`/tasks/${id}`),
     onSuccess: () => {
       toast.success(t('common.delete_success'))
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const quickStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) => put(`/tasks/${id}`, { status }),
+    onSuccess: () => {
+      toast.success(t('common.save_success'))
       void queryClient.invalidateQueries({ queryKey: ['tasks'] })
     },
     onError: (error: Error) => toast.error(error.message),
@@ -258,13 +268,37 @@ export default function Tasks() {
   ]
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <TasksIcon className="w-6 h-6 text-amber-500" />
           {t('page.tasks')}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 p-0.5 bg-gray-100 dark:bg-gray-700">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+              }`}
+            >
+              Table
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+              }`}
+            >
+              Kanban
+            </button>
+          </div>
           {canEdit && (
             <button
               onClick={openAddModal}
@@ -292,21 +326,134 @@ export default function Tasks() {
           </button>
         </div>
       </div>
-      <div
-        className="bg-white dark:bg-gray-800 dark:text-gray-200 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
-        role="region"
-        aria-label={t('page.tasks')}
-      >
-        <DataTable
-          columns={columns}
-          data={data ?? []}
-          isLoading={isLoading}
-          onEdit={canEdit ? openEditModal : undefined}
-          onDelete={canDelete ? openDeleteModal : undefined}
-          keyExtractor={(item) => item.id}
-          ariaLabel={t('page.tasks')}
-        />
-      </div>
+
+      {viewMode === 'table' ? (
+        <div
+          className="bg-white dark:bg-gray-800 dark:text-gray-200 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
+          role="region"
+          aria-label={t('page.tasks')}
+        >
+          <DataTable
+            columns={columns}
+            data={data ?? []}
+            isLoading={isLoading}
+            onEdit={canEdit ? openEditModal : undefined}
+            onDelete={canDelete ? openDeleteModal : undefined}
+            keyExtractor={(item) => item.id}
+            ariaLabel={t('page.tasks')}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" role="region" aria-label="Kanban Board">
+          {(['todo', 'in_progress', 'blocked', 'done'] as const).map((colStatus) => {
+            const colTasks = (data ?? []).filter((task) => task.status === colStatus)
+            return (
+              <div
+                key={colStatus}
+                className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col min-h-[350px]"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <span
+                      className={`inline-block w-2.5 h-2.5 rounded-full ${
+                        colStatus === 'done'
+                          ? 'bg-green-500'
+                          : colStatus === 'in_progress'
+                            ? 'bg-blue-500'
+                            : colStatus === 'blocked'
+                              ? 'bg-red-500'
+                              : 'bg-gray-400'
+                      }`}
+                    />
+                    {t(`status.${colStatus}`)}
+                  </h3>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium">
+                    {colTasks.length}
+                  </span>
+                </div>
+
+                <div className="space-y-3 flex-1 overflow-y-auto">
+                  {colTasks.map((task) => {
+                    const emp = employees?.find((e) => e.id === task.assignedTo)
+                    const dept = departments?.find((d) => d.id === task.departmentId)
+                    return (
+                      <div
+                        key={task.id}
+                        className="bg-white dark:bg-gray-800 p-3.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm space-y-2 hover:shadow transition-shadow"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{task.title}</h4>
+                          <span
+                            className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${priorityColors[task.priority] || ''}`}
+                          >
+                            {t(`status.${task.priority}`)}
+                          </span>
+                        </div>
+                        {task.description && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{task.description}</p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                          {emp && (
+                            <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                              👤 {emp.name}
+                            </span>
+                          )}
+                          {dept && (
+                            <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                              🏢 {dept.name}
+                            </span>
+                          )}
+                          {task.dueDate && (
+                            <span className="text-gray-400">
+                              📅 {new Date(task.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between gap-2">
+                          <select
+                            value={task.status}
+                            onChange={(e) => quickStatusMutation.mutate({ id: task.id, status: e.target.value })}
+                            className="text-xs bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-1 text-gray-700 dark:text-gray-200"
+                            aria-label={t('task.status')}
+                          >
+                            <option value="todo">{t('status.todo')}</option>
+                            <option value="in_progress">{t('status.in_progress')}</option>
+                            <option value="blocked">{t('status.blocked')}</option>
+                            <option value="done">{t('status.done')}</option>
+                          </select>
+                          <div className="flex items-center gap-1">
+                            {canEdit && (
+                              <button
+                                onClick={() => openEditModal(task)}
+                                className="text-xs text-amber-600 dark:text-amber-400 hover:underline px-1 py-0.5"
+                              >
+                                {t('action.edit')}
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => openDeleteModal(task)}
+                                className="text-xs text-red-600 dark:text-red-400 hover:underline px-1 py-0.5"
+                              >
+                                {t('action.delete')}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {colTasks.length === 0 && (
+                    <div className="text-xs text-gray-400 text-center py-6 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+                      {t('common.no_data')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <Modal isOpen={isModalOpen} onClose={handleClose} title={editingItem ? t('action.edit') : t('action.add')}>
         <FormProvider {...form}>

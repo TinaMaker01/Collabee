@@ -8,5 +8,11 @@ dist/
 *.log
 *.err
 .DS_Store
+Thumbs.db
+desktop.ini
 .idea/
+.vscode/
+coverage/
+.nyc_output/
 *.tsbuildinfo
+docker-compose.override.yml

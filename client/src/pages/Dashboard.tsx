@@ -46,7 +46,8 @@ export default function Dashboard() {
   const isLoading = employeesQuery.isLoading || leaveQuery.isLoading || deptQuery.isLoading || tasksQuery.isLoading
   const pendingLeaves = leaveQuery.data?.filter((l) => l.status === 'pending').length ?? 0
   const currentEmployee = employeesQuery.data?.find((emp) => emp.email === user?.email)
-  const myTasks = tasksQuery.data?.filter((task) => currentEmployee && task.assignedTo === currentEmployee.id).length ?? 0
+  const myTasks =
+    tasksQuery.data?.filter((task) => currentEmployee && task.assignedTo === currentEmployee.id).length ?? 0
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

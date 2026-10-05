@@ -184,7 +184,11 @@ export default function Admin() {
         />
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={handleClose} title={editingUser ? t('admin.edit_user') : t('admin.add_user')}>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleClose}
+        title={editingUser ? t('admin.edit_user') : t('admin.add_user')}
+      >
         <FormProvider {...form}>
           {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -192,7 +196,9 @@ export default function Admin() {
             <FormField name="email" label={t('auth.email')} type="email" required />
             {!editingUser && <FormField name="password" label={t('auth.password')} type="password" required />}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.role')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('admin.role')}
+              </label>
               <select
                 className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
                 {...form.register('role')}

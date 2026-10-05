@@ -23,12 +23,7 @@ tasksRoute.get('/', async (c) => {
   if (user.role === 'user' && !assignedTo && !departmentId) {
     const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
     if (emp) {
-      const data = await withCache(c, () =>
-        db
-          .select()
-          .from(tasks)
-          .where(eq(tasks.assignedTo, emp.id)),
-      )
+      const data = await withCache(c, () => db.select().from(tasks).where(eq(tasks.assignedTo, emp.id)))
       return c.json(data)
     }
   }

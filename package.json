@@ -1,12 +1,12 @@
 {
   "name": "collabee-monorepo",
   "private": true,
+  "license": "MIT",
   "workspaces": [
     "client",
     "server"
   ],
   "scripts": {
-    "install:all": "npm install",
     "dev": "concurrently -n client,server -c cyan,green \"npm run dev -w client\" \"npm run dev -w server\"",
     "dev:server": "npm run dev -w server",
     "dev:client": "npm run dev -w client",
@@ -14,7 +14,8 @@
     "lint": "npm run lint --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test --workspaces",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=20.0.0"

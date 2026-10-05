@@ -134,7 +134,7 @@ export default function Leave() {
     setEditingItem(null)
     const currentEmp = employees?.find((emp) => emp.email === user?.email)
     form.reset({
-      employeeId: currentEmp ? String(currentEmp.id) : (employees?.[0] ? String(employees[0].id) : ''),
+      employeeId: currentEmp ? String(currentEmp.id) : employees?.[0] ? String(employees[0].id) : '',
       type: 'annual',
       startDate: '',
       endDate: '',

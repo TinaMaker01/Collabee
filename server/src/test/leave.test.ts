@@ -13,9 +13,11 @@ vi.mock('../db/index.js', () => ({
       fn({
         insert: vi.fn().mockReturnValue({
           values: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([
-              { id: 1, employeeId: 1, type: 'annual', startDate: new Date(), endDate: new Date(), status: 'pending' },
-            ]),
+            returning: vi
+              .fn()
+              .mockResolvedValue([
+                { id: 1, employeeId: 1, type: 'annual', startDate: new Date(), endDate: new Date(), status: 'pending' },
+              ]),
           }),
         }),
         select: vi.fn().mockReturnValue({

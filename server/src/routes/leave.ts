@@ -37,9 +37,7 @@ leaveRoute.get('/', async (c) => {
   if (user.role === 'user') {
     const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
     if (!emp) return c.json([])
-    const data = await withCache(c, () =>
-      db.select().from(leaveRequests).where(eq(leaveRequests.employeeId, emp.id)),
-    )
+    const data = await withCache(c, () => db.select().from(leaveRequests).where(eq(leaveRequests.employeeId, emp.id)))
     return c.json(data)
   }
 

@@ -27,7 +27,7 @@ describe('RFC 4180 CSV Parser', () => {
   })
 
   it('should handle CRLF (Windows) and LF (Unix) newlines', () => {
-    const csv = "name,email\r\nAlice,alice@test.com\r\nBob,bob@test.com\n"
+    const csv = 'name,email\r\nAlice,alice@test.com\r\nBob,bob@test.com\n'
     const result = parseCsv<{ name: string; email: string }>(csv)
     expect(result).toHaveLength(2)
     expect(result[0].name).toBe('Alice')

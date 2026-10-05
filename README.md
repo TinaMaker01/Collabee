@@ -16,16 +16,23 @@ Full-stack HR management application for SMEs — employee records, attendance, 
 
 ## Quick Start
 
-### With Docker
+### With Docker (Full Stack)
 
 ```bash
-git clone <url> && cd collabee
-cp server/.env.example server/.env
 cp .env.example .env
+cp server/.env.example server/.env
+docker compose up --build -d
+# Frontend: http://localhost:5173 | API: http://localhost:3000
+```
+
+### With Docker (Database only)
+
+```bash
+cp .env.example .env
+cp server/.env.example server/.env
 docker compose up -d db
 npm install
 npm run dev          # Client + server start
-# Migrations and seed run automatically
 ```
 
 ### Without Docker (local PostgreSQL)

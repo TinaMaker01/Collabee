@@ -5,10 +5,11 @@ import { eq, sql, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { users, employees, tasks, leaveRequests, notifications } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
-import { NotFoundError } from '../middleware/error.js'
+import { NotFoundError, ConflictError } from '../middleware/error.js'
 import { hashPassword } from '../services/auth.js'
 import { userCreateSchema, userUpdateSchema } from '../shared/schemas.js'
 import { logger } from '../utils/logger.js'
+import { logActivity } from '../utils/activityLogger.js'
 
 const adminRoute = new Hono()
 
@@ -55,35 +56,65 @@ const roleSchema = z.object({
 })
 
 adminRoute.put('/users/:id/role', zValidator('json', roleSchema), async (c) => {
+  const currentUser = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   const { role } = c.req.valid('json')
-  const [updated] = await db.update(users).set({ role }).where(eq(users.id, id)).returning({
+
+  // Check if admin is demoting themselves
+  if (id === currentUser.id && role !== 'admin') {
+    throw new ConflictError('Cannot demote your own admin account')
+  }
+
+  const [updated] = await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, id)).returning({
     id: users.id,
     name: users.name,
     email: users.email,
     role: users.role,
   })
   if (!updated) throw new NotFoundError('User not found')
+
+  await logActivity(currentUser.id, 'update', 'user', id, `Updated role of user ${updated.email} to ${role}`)
   return c.json(updated)
 })
 
 adminRoute.delete('/users/:id', async (c) => {
+  const currentUser = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
-  // Clean up related records before deleting the user
+
+  if (id === currentUser.id) {
+    throw new ConflictError('Cannot delete your own account')
+  }
+
+  const [targetUser] = await db.select().from(users).where(eq(users.id, id))
+  if (!targetUser) throw new NotFoundError('User not found')
+
+  if (targetUser.role === 'admin') {
+    const [adminCount] = await db.select({ value: count() }).from(users).where(eq(users.role, 'admin'))
+    if (Number(adminCount.value) <= 1) {
+      throw new ConflictError('Cannot delete the last remaining admin account')
+    }
+  }
+
+  // Clean up notifications and reassign foreign keys to avoid DB constraint failures
   await db.delete(notifications).where(eq(notifications.userId, id))
-  logger.info({ userId: id }, 'Deleted user notifications')
-  // Note: tasks and leave_requests created/approved by this user are preserved
-  // to maintain referential integrity of historical data
+  await db.update(tasks).set({ createdBy: currentUser.id }).where(eq(tasks.createdBy, id))
+  await db.update(leaveRequests).set({ approvedBy: currentUser.id }).where(eq(leaveRequests.approvedBy, id))
+
+  logger.info({ userId: id }, 'Cleaned references for user before deletion')
+
   const [deleted] = await db.delete(users).where(eq(users.id, id)).returning({
     id: users.id,
     name: users.name,
     email: users.email,
   })
   if (!deleted) throw new NotFoundError('User not found')
+
+  await logActivity(currentUser.id, 'delete', 'user', id, `Deleted user ${deleted.email}`)
   return c.json({ message: 'User deleted' })
 })
 
 adminRoute.post('/users', zValidator('json', userCreateSchema), async (c) => {
+  const currentUser = c.get('user')
   const body = c.req.valid('json')
   const passwordHash = await hashPassword(body.password)
   const [user] = await db
@@ -100,19 +131,28 @@ adminRoute.post('/users', zValidator('json', userCreateSchema), async (c) => {
       email: users.email,
       role: users.role,
     })
+
+  await logActivity(currentUser.id, 'create', 'user', user.id, `Created user ${user.email} (${user.role})`)
   return c.json(user, 201)
 })
 
 adminRoute.put('/users/:id', zValidator('json', userUpdateSchema), async (c) => {
+  const currentUser = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   const body = c.req.valid('json')
-  const [updated] = await db.update(users).set(body).where(eq(users.id, id)).returning({
-    id: users.id,
-    name: users.name,
-    email: users.email,
-    role: users.role,
-  })
+  const [updated] = await db
+    .update(users)
+    .set({ ...body, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+    })
   if (!updated) throw new NotFoundError('User not found')
+
+  await logActivity(currentUser.id, 'update', 'user', id, `Updated user profile for ${updated.email}`)
   return c.json(updated)
 })
 

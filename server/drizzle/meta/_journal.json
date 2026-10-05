@@ -8,6 +8,20 @@
       "when": 1781105706224,
       "tag": "0000_new_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781105706225,
+      "tag": "0001_add_activity_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781105706226,
+      "tag": "0002_add_documents_and_constraints",
+      "breakpoints": true
     }
   ]
 }

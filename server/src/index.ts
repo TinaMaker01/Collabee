@@ -75,14 +75,42 @@ async function startup() {
 
   const RATE_LIMIT = parseEnvInt(process.env.RATE_LIMIT, 100)
   const RATE_WINDOW_SEC = 60
-
-  // Rate limiter using node-cache with automatic TTL-based expiration.
-  // Note: This is in-memory and resets on server restart.
-  // For multi-instance deployments, replace with Redis-backed rate limiter.
   const rateLimitCache = new NodeCache({ stdTTL: RATE_WINDOW_SEC, checkperiod: 30 })
 
+  // Strict auth rate limiter (10 attempts per minute per IP to prevent brute-force)
+  const authRateLimitCache = new NodeCache({ stdTTL: 60, checkperiod: 30 })
+  const AUTH_RATE_LIMIT = parseEnvInt(process.env.AUTH_RATE_LIMIT, 10)
+
+  app.use('/api/auth/*', async (c, next) => {
+    if (c.req.path === '/api/auth/login' || c.req.path === '/api/auth/register') {
+      const ip =
+        c.req.header('cf-connecting-ip') ||
+        c.req.header('x-real-ip') ||
+        c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ||
+        '127.0.0.1'
+      const count = authRateLimitCache.get<number>(ip) ?? 0
+      if (count >= AUTH_RATE_LIMIT) {
+        return c.json(
+          {
+            error: {
+              code: 'RATE_LIMIT_EXCEEDED',
+              message: 'Too many authentication attempts. Please try again later.',
+            },
+          },
+          429,
+        )
+      }
+      authRateLimitCache.set(ip, count + 1)
+    }
+    await next()
+  })
+
   app.use('*', async (c, next) => {
-    const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || c.req.header('x-real-ip') || 'unknown'
+    const ip =
+      c.req.header('cf-connecting-ip') ||
+      c.req.header('x-real-ip') ||
+      c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ||
+      '127.0.0.1'
     const currentCount = rateLimitCache.get<number>(ip)
     if (currentCount === undefined) {
       rateLimitCache.set(ip, 1)
@@ -92,8 +120,6 @@ async function startup() {
       }
       const ttl = rateLimitCache.getTtl(ip)
       if (ttl !== undefined) {
-        // ttl is the absolute timestamp when it expires (in ms).
-        // node-cache set() takes TTL in seconds.
         const remainingTtl = (ttl - Date.now()) / 1000
         rateLimitCache.set(ip, currentCount + 1, remainingTtl)
       } else {
@@ -111,6 +137,7 @@ async function startup() {
     c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     c.res.headers.set('Content-Security-Policy', "default-src 'self'")
     c.res.headers.set('Referrer-Policy', 'no-referrer')
+    c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   })
 
   app.get('/api/health', async (c) => {

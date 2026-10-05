@@ -1,4 +1,15 @@
-import { pgTable, serial, text, timestamp, boolean, varchar, integer, foreignKey, index } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  boolean,
+  varchar,
+  integer,
+  foreignKey,
+  index,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 /**
@@ -115,7 +126,7 @@ export const attendance = pgTable(
     }),
     employeeIdIdx: index('attendance_employee_id_idx').on(table.employeeId),
     dateIdx: index('attendance_date_idx').on(table.date),
-    employeeDateIdx: index('attendance_employee_date_idx').on(table.employeeId, table.date),
+    employeeDateIdx: uniqueIndex('attendance_emp_date_unique_idx').on(table.employeeId, table.date),
   }),
 )
 

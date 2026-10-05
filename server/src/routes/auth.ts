@@ -1,13 +1,20 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { compareSync, hashSync } from 'bcryptjs'
 import { protectRoute } from '../middleware/auth.js'
 import { registerSchema, loginSchema, userProfileSchema, passwordChangeSchema } from '../shared/schemas.js'
-import { createUser, authenticateUser, generateToken, getUserById } from '../services/auth.js'
+import {
+  createUser,
+  authenticateUser,
+  generateToken,
+  getUserById,
+  verifyPassword,
+  hashPassword,
+} from '../services/auth.js'
 import { ConflictError, NotFoundError, UnauthorizedError } from '../middleware/error.js'
 import { db } from '../db/index.js'
 import { users } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
+import { logActivity } from '../utils/activityLogger.js'
 
 const validateRegister = zValidator('json', registerSchema)
 const validateLogin = zValidator('json', loginSchema)
@@ -26,6 +33,7 @@ authRoute.post('/register', validateRegister, async (c) => {
       name: user.name,
       role: user.role,
     })
+    await logActivity(user.id, 'create', 'user', user.id, 'User self-registered')
     return c.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role }, token }, 201)
   } catch (err: unknown) {
     const pgErr = err as { constraint?: string; code?: string }
@@ -80,6 +88,7 @@ authRoute.put('/profile', protectRoute, validateProfile, async (c) => {
     .returning()
 
   if (!updated) throw new NotFoundError('User not found')
+  await logActivity(user.id, 'update', 'user', user.id, 'Profile updated')
   return c.json({
     id: updated.id,
     name: updated.name,
@@ -99,11 +108,12 @@ authRoute.put('/password', protectRoute, zValidator('json', passwordChangeSchema
   const fullUser = await getUserById(user.id)
   if (!fullUser) throw new NotFoundError('User not found')
 
-  const valid = compareSync(currentPassword, fullUser.passwordHash)
+  const valid = await verifyPassword(currentPassword, fullUser.passwordHash)
   if (!valid) throw new UnauthorizedError('Current password is incorrect')
 
-  const newHash = hashSync(newPassword, 12)
+  const newHash = await hashPassword(newPassword)
   await db.update(users).set({ passwordHash: newHash }).where(eq(users.id, user.id))
+  await logActivity(user.id, 'update', 'password', user.id, 'Password changed')
   return c.json({ message: 'Password updated' })
 })
 

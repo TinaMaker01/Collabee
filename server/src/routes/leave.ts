@@ -114,6 +114,7 @@ leaveRoute.post('/', zValidator('json', leaveRequestSchema), async (c) => {
 
   await logActivity(user.id, 'CREATE', 'LEAVE_REQUEST', newRequest.id, { type: body.type })
   invalidateCache('/api/leave')
+  invalidateCache('/api/leave-balance')
   return c.json(newRequest, 201)
 })
 
@@ -146,6 +147,7 @@ leaveRoute.put('/:id/approve', requireRole('admin', 'manager'), async (c) => {
   if (!updated) throw new NotFoundError('Leave request not found')
   await logActivity(user.id, 'APPROVE', 'LEAVE_REQUEST', id)
   invalidateCache('/api/leave')
+  invalidateCache('/api/leave-balance')
   return c.json(updated)
 })
 
@@ -178,6 +180,7 @@ leaveRoute.put('/:id/reject', requireRole('admin', 'manager'), async (c) => {
   if (!updated) throw new NotFoundError('Leave request not found')
   await logActivity(user.id, 'REJECT', 'LEAVE_REQUEST', id)
   invalidateCache('/api/leave')
+  invalidateCache('/api/leave-balance')
   return c.json(updated)
 })
 
@@ -198,6 +201,7 @@ leaveRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', leave
 
   await logActivity(user.id, 'UPDATE', 'LEAVE_REQUEST', id)
   invalidateCache('/api/leave')
+  invalidateCache('/api/leave-balance')
   return c.json(updated)
 })
 
@@ -209,6 +213,7 @@ leaveRoute.delete('/:id', requireRole('admin'), async (c) => {
 
   await logActivity(user.id, 'DELETE', 'LEAVE_REQUEST', id)
   invalidateCache('/api/leave')
+  invalidateCache('/api/leave-balance')
   return c.json({ message: 'Leave request deleted' })
 })
 

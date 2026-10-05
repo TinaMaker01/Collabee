@@ -19,6 +19,7 @@ import notificationsRoute from './routes/notifications.js'
 import leaveBalanceRoute from './routes/leaveBalance.js'
 import documentsRoute from './routes/documents.js'
 import activityLogsRoute from './routes/activityLogs.js'
+import dashboardRoute from './routes/dashboard.js'
 
 function parseEnvInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback
@@ -180,6 +181,7 @@ async function startup() {
   app.route('/api/leave-balance', leaveBalanceRoute)
   app.route('/api/documents', documentsRoute)
   app.route('/api/activity-logs', activityLogsRoute)
+  app.route('/api/dashboard', dashboardRoute)
 
   const port = parseEnvInt(process.env.PORT, 3000)
   serve({ fetch: app.fetch, port })

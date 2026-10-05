@@ -66,7 +66,8 @@ employeesRoute.post('/', requireRole('admin', 'manager'), zValidator('json', emp
     })
     .returning()
   invalidateCache('/api/employees')
-  await logActivity(c.get('user').id, 'CREATE', 'EMPLOYEE', newEmployee.id, { name: newEmployee.name })
+  invalidateCache('/api/leave-balance')
+  await logActivity(c.get('user').id, 'create', 'employee', newEmployee.id, `Created employee "${newEmployee.name}"`)
   return c.json(newEmployee, 201)
 })
 
@@ -100,53 +101,52 @@ employeesRoute.post(
       return c.json({ error: { code: 'VALIDATION_ERROR', message: 'CSV contains invalid rows', details: errors } }, 400)
     }
 
-    await db.transaction(async (tx) => {
-      for (const emp of valid) {
-        await tx.insert(employees).values({
+    if (valid.length > 0) {
+      await db.insert(employees).values(
+        valid.map((emp) => ({
           name: emp.name,
           email: emp.email,
           position: emp.position || null,
           isDummy: false,
-        })
-      }
-    })
+        })),
+      )
+    }
 
     invalidateCache('/api/employees')
-    await logActivity(c.get('user').id, 'BULK_IMPORT', 'EMPLOYEE', undefined, { count: valid.length })
+    invalidateCache('/api/leave-balance')
+    await logActivity(c.get('user').id, 'bulk_import', 'employee', undefined, `Imported ${valid.length} employees`)
     return c.json({ message: 'Bulk import successful', count: valid.length }, 201)
   },
 )
 
-employeesRoute.put(
-  '/:id',
-  protectRoute,
-  requireRole('admin', 'manager'),
-  zValidator('json', employeeUpdateSchema),
-  async (c) => {
-    const id = parseInt(c.req.param('id')!, 10)
-    const body = c.req.valid('json')
-    const values: Record<string, unknown> = {}
-    if (body.name !== undefined) values.name = body.name
-    if (body.position !== undefined) values.position = body.position
-    if (body.email !== undefined) values.email = body.email
-    if (body.phone !== undefined) values.phone = body.phone
-    if (body.avatarUrl !== undefined) values.avatarUrl = body.avatarUrl
-    if (body.departmentId !== undefined) values.departmentId = body.departmentId
-    if (body.hireDate !== undefined) values.hireDate = new Date(body.hireDate)
-    if (body.salary !== undefined) values.salary = body.salary
-    if (body.status !== undefined) values.status = body.status
-    const [updated] = await db.update(employees).set(values).where(eq(employees.id, id)).returning()
-    if (!updated) throw new NotFoundError('Employee not found')
-    invalidateCache('/api/employees')
-    return c.json(updated)
-  },
-)
+employeesRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', employeeUpdateSchema), async (c) => {
+  const id = parseInt(c.req.param('id')!, 10)
+  const body = c.req.valid('json')
+  const values: Record<string, unknown> = {}
+  if (body.name !== undefined) values.name = body.name
+  if (body.position !== undefined) values.position = body.position
+  if (body.email !== undefined) values.email = body.email
+  if (body.phone !== undefined) values.phone = body.phone
+  if (body.avatarUrl !== undefined) values.avatarUrl = body.avatarUrl
+  if (body.departmentId !== undefined) values.departmentId = body.departmentId
+  if (body.hireDate !== undefined) values.hireDate = new Date(body.hireDate)
+  if (body.salary !== undefined) values.salary = body.salary
+  if (body.status !== undefined) values.status = body.status
+  const [updated] = await db.update(employees).set(values).where(eq(employees.id, id)).returning()
+  if (!updated) throw new NotFoundError('Employee not found')
+  invalidateCache('/api/employees')
+  invalidateCache('/api/leave-balance')
+  await logActivity(c.get('user').id, 'update', 'employee', id, `Updated employee "${updated.name}"`)
+  return c.json(updated)
+})
 
-employeesRoute.delete('/:id', protectRoute, requireRole('admin'), async (c) => {
+employeesRoute.delete('/:id', requireRole('admin'), async (c) => {
   const id = parseInt(c.req.param('id')!, 10)
   const [deleted] = await db.delete(employees).where(eq(employees.id, id)).returning()
   if (!deleted) throw new NotFoundError('Employee not found')
   invalidateCache('/api/employees')
+  invalidateCache('/api/leave-balance')
+  await logActivity(c.get('user').id, 'delete', 'employee', id, `Deleted employee "${deleted.name}"`)
   return c.json({ message: 'Employee deleted' })
 })
 

@@ -121,5 +121,111 @@ describe('React Component Unit Tests', () => {
     })
     container.remove()
   })
+
+  it('DataTable renders table headers, data rows and empty states', async () => {
+    const { default: DataTable } = await import('./components/DataTable')
+    const { createRoot } = await import('react-dom/client')
+    const { act } = await import('react')
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    interface Item {
+      id: number
+      title: string
+    }
+
+    const columns = [{ key: 'title', label: 'Item Title' }]
+    const sampleData: Item[] = [{ id: 1, title: 'First Task' }]
+
+    // 1. Normal data render
+    act(() => {
+      root.render(
+        <DataTable
+          columns={columns}
+          data={sampleData}
+          keyExtractor={(it: Item) => it.id}
+          ariaLabel="Task list"
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain('Item Title')
+    expect(container.textContent).toContain('First Task')
+
+    // 2. Empty state render
+    act(() => {
+      root.render(
+        <DataTable
+          columns={columns}
+          data={[]}
+          keyExtractor={(it: Item) => it.id}
+          ariaLabel="Task list"
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain('No data available')
+
+    act(() => {
+      root.unmount()
+    })
+    container.remove()
+  })
+
+  it('ConfirmDialog renders title, message and action buttons', async () => {
+    const { default: ConfirmDialog } = await import('./components/ConfirmDialog')
+    const { createRoot } = await import('react-dom/client')
+    const { act } = await import('react')
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    let confirmed = false
+    let closed = false
+
+    act(() => {
+      root.render(
+        <ConfirmDialog
+          isOpen={true}
+          title="Delete Employee"
+          message="Are you sure you want to delete this employee?"
+          confirmLabel="Yes, Delete"
+          onConfirm={() => {
+            confirmed = true
+          }}
+          onClose={() => {
+            closed = true
+          }}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain('Delete Employee')
+    expect(container.textContent).toContain('Are you sure you want to delete this employee?')
+    expect(container.textContent).toContain('Yes, Delete')
+
+    const buttons = container.querySelectorAll('button')
+    expect(buttons.length).toBeGreaterThan(0)
+
+    // Click confirm button
+    const confirmBtn = Array.from(buttons).find((b) => b.textContent?.includes('Yes, Delete'))
+    confirmBtn?.click()
+    expect(confirmed).toBe(true)
+
+    // Click cancel button
+    const cancelBtn = Array.from(buttons).find(
+      (b) => b.textContent?.includes('Cancel') || b.textContent?.includes('Annuler'),
+    )
+    cancelBtn?.click()
+    expect(closed).toBe(true)
+
+    act(() => {
+      root.unmount()
+    })
+    container.remove()
+  })
 })
 

@@ -41,6 +41,19 @@ export function DepartmentsIcon({ className }: IconProps) {
   )
 }
 
+export function OrgChartIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 4.354a4 4 0 110 5.292M12 9.646V14m0 0H6m6 0h6m-6 0v5m-6-5v5m12-5v5"
+      />
+    </svg>
+  )
+}
+
 export function AttendanceIcon({ className }: IconProps) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">

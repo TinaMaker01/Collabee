@@ -16,6 +16,7 @@ const Attendance = lazy(() => import('./pages/Attendance'))
 const Leave = lazy(() => import('./pages/Leave'))
 const Tasks = lazy(() => import('./pages/Tasks'))
 const Calendar = lazy(() => import('./pages/Calendar'))
+const OrgChart = lazy(() => import('./pages/OrgChart'))
 const Documents = lazy(() => import('./pages/Documents'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Admin = lazy(() => import('./pages/Admin'))
@@ -113,6 +114,14 @@ function App() {
                     element={
                       <ErrorBoundary>
                         <Calendar />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/org-chart"
+                    element={
+                      <ErrorBoundary>
+                        <OrgChart />
                       </ErrorBoundary>
                     }
                   />

@@ -34,9 +34,9 @@ const formSchema = z.object({
   type: z.string().optional(),
   url: z
     .string()
-    .url()
-    .refine((val) => val.startsWith('https://'), {
-      message: 'URL must use secure HTTPS protocol',
+    .min(1)
+    .refine((val) => val.startsWith('https://') || val.startsWith('/api/documents/file/'), {
+      message: 'URL must use secure HTTPS protocol or be an uploaded document',
     }),
 })
 
@@ -50,6 +50,7 @@ export default function Documents() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Document | null>(null)
   const [deletingItem, setDeletingItem] = useState<Document | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const { data, isLoading } = useQuery({ queryKey: ['documents'], queryFn: () => get<Document[]>('/documents') })
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: () => get<Employee[]>('/employees') })
@@ -58,6 +59,27 @@ export default function Documents() {
     resolver: zodResolver(formSchema),
     defaultValues: { employeeId: '', title: '', type: '', url: '' },
   })
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      const fd = new window.FormData()
+      fd.append('file', file)
+      const res = await post<{ url: string; filename: string }>('/documents/upload', fd)
+      form.setValue('url', res.url, { shouldValidate: true })
+      if (!form.getValues('title')) {
+        form.setValue('title', file.name.replace(/\.[^/.]+$/, ''))
+      }
+      toast.success('File uploaded successfully')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   const createMutation = useMutation({
     mutationFn: (data: FormData) =>
@@ -252,7 +274,23 @@ export default function Documents() {
             </div>
             <FormField name="title" label={t('document.title')} required />
             <FormField name="type" label={t('document.type')} />
-            <FormField name="url" label="URL" type="url" required />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Upload File (PDF, Image, Office Doc)
+              </label>
+              <input
+                type="file"
+                onChange={(e) => {
+                  void handleFileUpload(e)
+                }}
+                disabled={isUploading}
+                className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 dark:file:bg-amber-900/40 dark:file:text-amber-300 border border-gray-300 dark:border-gray-600 rounded-lg p-1.5"
+              />
+              {isUploading && <p className="text-xs text-amber-600 mt-1">Uploading file...</p>}
+            </div>
+
+            <FormField name="url" label="Document URL or Path" required />
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"

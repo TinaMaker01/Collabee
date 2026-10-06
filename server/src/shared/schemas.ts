@@ -106,9 +106,9 @@ export const documentSchema = z.object({
   title: z.string().min(1).max(255),
   url: z
     .string()
-    .url()
-    .refine((val) => val.startsWith('https://'), {
-      message: 'Document URL must use secure HTTPS protocol',
+    .min(1)
+    .refine((val) => val.startsWith('https://') || val.startsWith('/api/documents/file/'), {
+      message: 'Document URL must use secure HTTPS protocol or uploaded document path',
     }),
   type: z.string().max(50).optional(),
 })

@@ -1,6 +1,7 @@
 {
   "name": "collabee-monorepo",
   "private": true,
+  "type": "module",
   "license": "MIT",
   "workspaces": [
     "client",
@@ -15,7 +16,9 @@
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test --workspaces",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "precommit": "node scripts/pre-commit.js",
+    "prepare": "node scripts/setup-git-hooks.js"
   },
   "engines": {
     "node": ">=20.0.0"

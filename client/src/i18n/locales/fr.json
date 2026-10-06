@@ -213,6 +213,8 @@
     "select_option": "Sélectionner...",
     "filter_all": "Tous",
     "not_available": "N/D",
-    "close": "Fermer"
+    "close": "Fermer",
+    "print_pdf": "Imprimer / PDF",
+    "report_generated_on": "Rapport généré le"
   }
 }

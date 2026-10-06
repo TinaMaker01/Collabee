@@ -11,7 +11,7 @@ import FormField from '../components/FormField'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useTranslation } from 'react-i18next'
-import { CalendarIcon, PlusIcon, CheckIcon, XIcon, ClockIcon, DownloadIcon } from '../components/icons'
+import { CalendarIcon, PlusIcon, CheckIcon, XIcon, ClockIcon, DownloadIcon, PrinterIcon } from '../components/icons'
 import { exportCsv } from '../utils/exportCsv'
 
 interface AttendanceRecord {
@@ -205,7 +205,24 @@ export default function Attendance() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+      <div className="print-only mb-6 border-b pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Collabee</h1>
+            <p className="text-sm text-gray-600">
+              {t('page.attendance')} — {t('common.report_generated_on')}{' '}
+              {new Date().toLocaleDateString()}
+            </p>
+          </div>
+          <div className="text-right text-xs text-gray-500">
+            {employeeFilter
+              ? `${t('attendance.employee')}: ${employees?.find((e) => e.id.toString() === employeeFilter)?.name || employeeFilter}`
+              : t('attendance.all_employees')}
+          </div>
+        </div>
+      </div>
+
+      <div className="no-print flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <CalendarIcon className="w-6 h-6 text-amber-500" />
           {t('page.attendance')}
@@ -247,6 +264,14 @@ export default function Attendance() {
           >
             <DownloadIcon className="w-4 h-4 mr-1.5" />
             CSV
+          </button>
+          <button
+            onClick={() => window.print()}
+            title={t('common.print_pdf')}
+            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
+          >
+            <PrinterIcon className="w-4 h-4 mr-1.5" />
+            PDF
           </button>
         </div>
       </div>

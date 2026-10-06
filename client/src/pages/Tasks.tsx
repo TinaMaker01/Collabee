@@ -394,19 +394,13 @@ export default function Tasks() {
                         )}
                         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
                           {emp && (
-                            <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-                              👤 {emp.name}
-                            </span>
+                            <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">👤 {emp.name}</span>
                           )}
                           {dept && (
-                            <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-                              🏢 {dept.name}
-                            </span>
+                            <span className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">🏢 {dept.name}</span>
                           )}
                           {task.dueDate && (
-                            <span className="text-gray-400">
-                              📅 {new Date(task.dueDate).toLocaleDateString()}
-                            </span>
+                            <span className="text-gray-400">📅 {new Date(task.dueDate).toLocaleDateString()}</span>
                           )}
                         </div>
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between gap-2">

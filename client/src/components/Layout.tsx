@@ -446,9 +446,7 @@ export default function Layout() {
             </div>
             <div className="max-h-72 overflow-y-auto p-2">
               {filteredNavItems.length === 0 ? (
-                <div className="p-4 text-center text-xs text-gray-400">
-                  {t('common.no_data')}
-                </div>
+                <div className="p-4 text-center text-xs text-gray-400">{t('common.no_data')}</div>
               ) : (
                 <ul className="space-y-1">
                   {filteredNavItems.map((item) => {

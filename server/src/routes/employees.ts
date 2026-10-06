@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { eq } from 'drizzle-orm'
+import { eq, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { employees } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
@@ -17,6 +17,52 @@ employeesRoute.use('*', protectRoute)
 
 employeesRoute.get('/', async (c) => {
   const user = c.get('user')
+  const page = c.req.query('page')
+  const limit = c.req.query('limit')
+
+  if (page || limit) {
+    const pageNum = Math.max(1, parseInt(page || '1', 10) || 1)
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit || '20', 10) || 20))
+    const offset = (pageNum - 1) * limitNum
+
+    const [totalRes] = await db.select({ value: count() }).from(employees)
+    const total = Number(totalRes?.value || 0)
+    const totalPages = Math.ceil(total / limitNum) || 1
+
+    const rawData = await db.select().from(employees).limit(limitNum).offset(offset)
+    const data =
+      user.role === 'user'
+        ? rawData.map((emp) => ({
+            id: emp.id,
+            name: emp.name,
+            email: emp.email,
+            position: emp.position,
+            departmentId: emp.departmentId,
+            avatarUrl: emp.avatarUrl,
+            status: emp.status,
+          }))
+        : rawData
+
+    c.header('X-Total-Count', total.toString())
+    c.header('X-Page', pageNum.toString())
+    c.header('X-Per-Page', limitNum.toString())
+    c.header('X-Total-Pages', totalPages.toString())
+
+    if (c.req.query('paginate') === 'true') {
+      return c.json({
+        data,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages,
+        },
+      })
+    }
+
+    return c.json(data)
+  }
+
   const data = await withCache(c, () => db.select().from(employees))
   if (user.role === 'user') {
     return c.json(

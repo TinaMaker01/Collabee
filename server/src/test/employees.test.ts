@@ -110,4 +110,29 @@ describe('Employees routes', () => {
     })
     expect(res.status).toBe(400)
   })
+
+  it('GET /api/employees with page and limit should return paginated list and headers', async () => {
+    vi.mocked(db.select)
+      .mockReturnValueOnce({
+        from: vi.fn().mockResolvedValue([{ value: 50 }]),
+      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          limit: vi.fn().mockReturnValue({
+            offset: vi.fn().mockResolvedValue([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]),
+          }),
+        }),
+      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    const res = await app.request('/api/employees?page=2&limit=2', {
+      headers: { Authorization: 'Bearer test-token' },
+    })
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('X-Total-Count')).toBe('50')
+    expect(res.headers.get('X-Page')).toBe('2')
+    expect(res.headers.get('X-Per-Page')).toBe('2')
+    const data = await res.json()
+    expect(data).toHaveLength(2)
+  })
 })

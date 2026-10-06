@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import './i18n'
 import { exportCsv } from './utils/exportCsv'
 import en from './i18n/locales/en.json'
 import fr from './i18n/locales/fr.json'
@@ -34,7 +35,7 @@ describe('Frontend & i18n Suite', () => {
       href: '',
       download: '',
     }
-    vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+    const spy = vi.spyOn(document, 'createElement').mockImplementation((tag) => {
       if (tag === 'a') return mockAnchor as unknown as HTMLElement
       return createElement(tag)
     })
@@ -47,6 +48,7 @@ describe('Frontend & i18n Suite', () => {
 
     expect(mockAnchor.click).toHaveBeenCalled()
     expect(downloadedBlob).toBeDefined()
+    spy.mockRestore()
   })
 
   it('en.json and fr.json have matching translation keys', () => {
@@ -68,3 +70,56 @@ describe('Frontend & i18n Suite', () => {
     expect(fr.admin.role_admin).toBe('Administrateur')
   })
 })
+
+describe('React Component Unit Tests', () => {
+  it('LoadingSpinner renders with role=status and accessible text', async () => {
+    const { default: LoadingSpinner } = await import('./components/LoadingSpinner')
+    const { createRoot } = await import('react-dom/client')
+    const { act } = await import('react')
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    act(() => {
+      root.render(<LoadingSpinner size="lg" />)
+    })
+
+    const statusEl = container.querySelector('[role="status"]')
+    expect(statusEl).not.toBeNull()
+    expect(container.textContent).toContain('Loading...')
+
+    act(() => {
+      root.unmount()
+    })
+    container.remove()
+  })
+
+  it('NotFound renders 404 header and link', async () => {
+    const { default: NotFound } = await import('./pages/NotFound')
+    const { MemoryRouter } = await import('react-router-dom')
+    const { createRoot } = await import('react-dom/client')
+    const { act } = await import('react')
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    act(() => {
+      root.render(
+        <MemoryRouter>
+          <NotFound />
+        </MemoryRouter>,
+      )
+    })
+
+    expect(container.textContent).toContain('404')
+    expect(container.textContent).toContain('Page Not Found')
+
+    act(() => {
+      root.unmount()
+    })
+    container.remove()
+  })
+})
+

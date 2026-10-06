@@ -34,6 +34,7 @@ vi.mock('../services/auth.js', () => ({
 }))
 
 import { createUser, authenticateUser, generateToken, getUserById, verifyToken } from '../services/auth.js'
+import { db } from '../db/index.js'
 
 describe('registerSchema', () => {
   it('should validate register with valid data', () => {
@@ -174,5 +175,33 @@ describe('Auth routes', () => {
       headers: { Authorization: 'Bearer valid-token' },
     })
     expect(res.status).toBe(200)
+  })
+
+  it('POST /api/auth/forgot-password should return success message', async () => {
+    vi.mocked(db.select).mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ id: 1, email: 'john@example.com' }]),
+      }),
+    } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    const res = await app.request('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'john@example.com' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.message).toContain('password reset link has been sent')
+  })
+
+  it('POST /api/auth/reset-password should fail on invalid token', async () => {
+    const res = await app.request('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token: 'invalid-token-123', newPassword: 'newPassword123' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    expect(res.status).toBe(400)
   })
 })

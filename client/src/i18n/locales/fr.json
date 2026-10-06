@@ -89,7 +89,13 @@
     "name_placeholder": "Entrez votre nom",
     "login_error": "Email ou mot de passe invalide",
     "register_error": "Échec de l'inscription",
-    "logout_success": "Déconnecté avec succès"
+    "logout_success": "Déconnecté avec succès",
+    "forgot_password": "Mot de passe oublié ?",
+    "forgot_password_title": "Réinitialiser le mot de passe",
+    "forgot_password_desc": "Entrez votre email pour recevoir un lien de réinitialisation",
+    "reset_password_title": "Définir un nouveau mot de passe",
+    "reset_password_success": "Mot de passe mis à jour ! Vous pouvez vous connecter.",
+    "back_to_login": "Retour à la connexion"
   },
   "admin": {
     "add_user": "Ajouter un utilisateur",

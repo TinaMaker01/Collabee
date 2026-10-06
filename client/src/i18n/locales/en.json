@@ -89,7 +89,13 @@
     "name_placeholder": "Enter your name",
     "login_error": "Invalid email or password",
     "register_error": "Registration failed",
-    "logout_success": "Logged out successfully"
+    "logout_success": "Logged out successfully",
+    "forgot_password": "Forgot password?",
+    "forgot_password_title": "Reset Password",
+    "forgot_password_desc": "Enter your email to receive a password reset link",
+    "reset_password_title": "Set New Password",
+    "reset_password_success": "Password updated! You can now log in.",
+    "back_to_login": "Back to sign in"
   },
   "admin": {
     "add_user": "Add User",

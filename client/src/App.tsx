@@ -23,6 +23,7 @@ const Admin = lazy(() => import('./pages/Admin'))
 const LeaveBalance = lazy(() => import('./pages/LeaveBalance'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 const queryClient = new QueryClient({
@@ -56,6 +57,14 @@ function App() {
                 element={
                   <ErrorBoundary>
                     <Register />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/forgot-password"
+                element={
+                  <ErrorBoundary>
+                    <ForgotPassword />
                   </ErrorBoundary>
                 }
               />

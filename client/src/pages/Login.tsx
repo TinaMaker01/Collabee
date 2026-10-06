@@ -119,6 +119,11 @@ export default function Login() {
                 </button>
               </div>
             </FormField>
+            <div className="flex justify-end">
+              <Link to="/forgot-password" className="text-xs text-amber-600 hover:text-amber-700 font-medium">
+                {t('auth.forgot_password')}
+              </Link>
+            </div>
             <button
               type="submit"
               disabled={form.formState.isSubmitting}

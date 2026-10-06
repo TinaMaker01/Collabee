@@ -1,7 +1,14 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { protectRoute } from '../middleware/auth.js'
-import { registerSchema, loginSchema, userProfileSchema, passwordChangeSchema } from '../shared/schemas.js'
+import {
+  registerSchema,
+  loginSchema,
+  userProfileSchema,
+  passwordChangeSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from '../shared/schemas.js'
 import {
   createUser,
   authenticateUser,
@@ -10,11 +17,16 @@ import {
   verifyPassword,
   hashPassword,
 } from '../services/auth.js'
-import { ConflictError, NotFoundError, UnauthorizedError } from '../middleware/error.js'
+import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from '../middleware/error.js'
 import { db } from '../db/index.js'
 import { users } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { logActivity } from '../utils/activityLogger.js'
+import {
+  createPasswordResetToken,
+  verifyAndConsumePasswordResetToken,
+  sendPasswordResetEmail,
+} from '../services/passwordReset.js'
 
 const validateRegister = zValidator('json', registerSchema)
 const validateLogin = zValidator('json', loginSchema)
@@ -57,6 +69,42 @@ authRoute.post('/login', validateLogin, async (c) => {
     role: user.role,
   })
   return c.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role }, token })
+})
+
+authRoute.post('/forgot-password', zValidator('json', forgotPasswordSchema), async (c) => {
+  const { email } = c.req.valid('json')
+
+  const [existingUser] = await db.select().from(users).where(eq(users.email, email))
+  if (existingUser) {
+    const token = createPasswordResetToken(email)
+    await sendPasswordResetEmail(email, token)
+    await logActivity(existingUser.id, 'request', 'password_reset', existingUser.id, 'Password reset requested')
+  }
+
+  // Always return identical success message to prevent user enumeration
+  return c.json({
+    message: 'If an account exists with this email, a password reset link has been sent.',
+  })
+})
+
+authRoute.post('/reset-password', zValidator('json', resetPasswordSchema), async (c) => {
+  const { token, newPassword } = c.req.valid('json')
+
+  const email = verifyAndConsumePasswordResetToken(token)
+  if (!email) {
+    throw new ValidationError('Invalid or expired password reset token')
+  }
+
+  const [targetUser] = await db.select().from(users).where(eq(users.email, email))
+  if (!targetUser) {
+    throw new NotFoundError('User not found')
+  }
+
+  const newHash = await hashPassword(newPassword)
+  await db.update(users).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(users.id, targetUser.id))
+  await logActivity(targetUser.id, 'update', 'password', targetUser.id, 'Password reset successfully')
+
+  return c.json({ message: 'Password has been reset successfully' })
 })
 
 authRoute.get('/me', protectRoute, async (c) => {

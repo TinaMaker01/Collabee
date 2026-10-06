@@ -114,6 +114,44 @@ export default function Layout() {
     refetchOnWindowFocus: true,
   })
 
+  useEffect(() => {
+    if (!user) return
+
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const url = `/api/notifications/stream?token=${encodeURIComponent(token)}`
+    let eventSource: EventSource | null = null
+
+    try {
+      eventSource = new EventSource(url)
+
+      eventSource.addEventListener('notification', (event) => {
+        try {
+          const rawData = (event as MessageEvent<string>).data
+          const newNotif = JSON.parse(rawData) as Notification
+          queryClient.setQueryData<Notification[]>(['notifications'], (old) => {
+            if (!old) return [newNotif]
+            if (old.some((n) => n.id === newNotif.id)) return old
+            return [newNotif, ...old]
+          })
+          toast.info(newNotif.title, { description: newNotif.message })
+        } catch {
+          // Ignore JSON parse errors
+        }
+      })
+    } catch {
+      // EventSource connection fallback
+    }
+
+    return () => {
+      if (eventSource) {
+        eventSource.close()
+      }
+    }
+  }, [user, queryClient])
+
+
   const markRead = useMutation({
     mutationFn: (id: number) => patch(`/notifications/${id}/read`),
     onMutate: async (id) => {

@@ -8,6 +8,7 @@ import { NotFoundError, ForbiddenError } from '../middleware/error.js'
 import { withCache, invalidateCache } from '../utils/cache.js'
 import { taskSchema, taskUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
+import { emitNotification } from '../services/notificationEvents.js'
 
 async function notifyTaskAssignee(employeeId: number, taskTitle: string) {
   try {
@@ -15,12 +16,15 @@ async function notifyTaskAssignee(employeeId: number, taskTitle: string) {
     if (!emp) return
     const [targetUser] = await db.select().from(users).where(eq(users.email, emp.email))
     if (!targetUser) return
-    await db.insert(notifications).values({
+    const [inserted] = await db.insert(notifications).values({
       userId: targetUser.id,
       title: 'New Task Assigned',
       message: `You have been assigned to task: "${taskTitle}"`,
       type: 'info',
-    })
+    }).returning()
+    if (inserted) {
+      emitNotification(targetUser.id, inserted)
+    }
   } catch {
     // Non-blocking notification delivery
   }

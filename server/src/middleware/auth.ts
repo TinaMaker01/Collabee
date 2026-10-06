@@ -4,11 +4,19 @@ import { UnauthorizedError, ForbiddenError } from './error.js'
 
 export async function protectRoute(c: Context, next: Next) {
   const authHeader = c.req.header('Authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const queryToken = c.req.query('token')
+  let token: string | undefined
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7)
+  } else if (queryToken) {
+    token = queryToken
+  }
+
+  if (!token) {
     throw new UnauthorizedError('Unauthorized')
   }
 
-  const token = authHeader.slice(7)
   const user = await verifyToken(token)
   if (!user) {
     throw new UnauthorizedError('Invalid or expired token')

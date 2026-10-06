@@ -1,11 +1,49 @@
 import { Hono } from 'hono'
+import { streamSSE } from 'hono/streaming'
 import { db } from '../db/index.js'
 import { notifications } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
 import { protectRoute } from '../middleware/auth.js'
 import { NotFoundError } from '../middleware/error.js'
+import { notificationEvents } from '../services/notificationEvents.js'
 
 const notificationsRoute = new Hono()
+
+notificationsRoute.get('/stream', protectRoute, async (c) => {
+  const user = c.get('user')
+  return streamSSE(c, async (stream) => {
+    // Initial handshake
+    await stream.writeSSE({
+      data: JSON.stringify({ type: 'connected', userId: user.id }),
+      event: 'ping',
+    })
+
+    const onNotification = async (payload: unknown) => {
+      try {
+        await stream.writeSSE({
+          data: JSON.stringify(payload),
+          event: 'notification',
+        })
+      } catch {
+        // Stream aborted/closed
+      }
+    }
+
+    notificationEvents.on(`user:${user.id}`, onNotification)
+
+    stream.onAbort(() => {
+      notificationEvents.off(`user:${user.id}`, onNotification)
+    })
+
+    // Heartbeat every 25s to keep connection alive
+    while (!stream.aborted) {
+      await stream.sleep(25000)
+      if (!stream.aborted) {
+        await stream.writeSSE({ data: 'heartbeat', event: 'ping' })
+      }
+    }
+  })
+})
 
 notificationsRoute.get('/', protectRoute, async (c) => {
   const user = c.get('user')

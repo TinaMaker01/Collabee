@@ -11,6 +11,7 @@ import { type TxClient } from '../db/index.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { getLeaveBalance } from '../services/leave.js'
 import { logger } from '../utils/logger.js'
+import { emitNotification } from '../services/notificationEvents.js'
 
 async function notifyEmployee(tx: TxClient, employeeId: number, title: string, message: string, type: string) {
   const [emp] = await tx.select().from(employees).where(eq(employees.id, employeeId))
@@ -23,7 +24,10 @@ async function notifyEmployee(tx: TxClient, employeeId: number, title: string, m
     logger.warn({ employeeEmail: emp.email }, 'No user found for employee email')
     return
   }
-  await tx.insert(notifications).values({ userId: targetUser.id, title, message, type })
+  const [inserted] = await tx.insert(notifications).values({ userId: targetUser.id, title, message, type }).returning()
+  if (inserted) {
+    emitNotification(targetUser.id, inserted)
+  }
 }
 
 const leaveRoute = new Hono()

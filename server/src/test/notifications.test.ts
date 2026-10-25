@@ -37,9 +37,7 @@ describe('Notifications routes', () => {
   it('GET /api/notifications should list notifications for current user', async () => {
     vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user' })
 
-    const mockNotifs = [
-      { id: 10, userId: 1, title: 'Task Alert', message: 'Assigned', type: 'info', read: false },
-    ]
+    const mockNotifs = [{ id: 10, userId: 1, title: 'Task Alert', message: 'Assigned', type: 'info', read: false }]
 
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({

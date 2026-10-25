@@ -194,10 +194,7 @@ onboardingRoute.patch('/:id/toggle', async (c) => {
 
   // Check if all tasks for this employee are now complete
   if (newCompleted) {
-    const allEmpTasks = await db
-      .select()
-      .from(onboardingTasks)
-      .where(eq(onboardingTasks.employeeId, task.employeeId))
+    const allEmpTasks = await db.select().from(onboardingTasks).where(eq(onboardingTasks.employeeId, task.employeeId))
 
     const allFinished = allEmpTasks.length > 0 && allEmpTasks.every((t) => t.completed)
     if (allFinished) {
@@ -223,29 +220,34 @@ onboardingRoute.patch('/:id/toggle', async (c) => {
   return c.json(updated)
 })
 
-onboardingRoute.post('/', requireRole('admin', 'manager'), zValidator('json', onboardingTaskCreateSchema), async (c) => {
-  const user = c.get('user')
-  const body = c.req.valid('json')
+onboardingRoute.post(
+  '/',
+  requireRole('admin', 'manager'),
+  zValidator('json', onboardingTaskCreateSchema),
+  async (c) => {
+    const user = c.get('user')
+    const body = c.req.valid('json')
 
-  const [newEmployee] = await db.select().from(employees).where(eq(employees.id, body.employeeId))
-  if (!newEmployee) throw new NotFoundError('Employee not found')
+    const [newEmployee] = await db.select().from(employees).where(eq(employees.id, body.employeeId))
+    if (!newEmployee) throw new NotFoundError('Employee not found')
 
-  const [inserted] = await db
-    .insert(onboardingTasks)
-    .values({
-      employeeId: body.employeeId,
-      title: body.title,
-      description: body.description,
-      category: body.category,
-      order: body.order,
-      completed: false,
-    })
-    .returning()
+    const [inserted] = await db
+      .insert(onboardingTasks)
+      .values({
+        employeeId: body.employeeId,
+        title: body.title,
+        description: body.description,
+        category: body.category,
+        order: body.order,
+        completed: false,
+      })
+      .returning()
 
-  await logActivity(user.id, 'create', 'onboarding', inserted.id, `Created onboarding task "${inserted.title}"`)
+    await logActivity(user.id, 'create', 'onboarding', inserted.id, `Created onboarding task "${inserted.title}"`)
 
-  return c.json(inserted, 201)
-})
+    return c.json(inserted, 201)
+  },
+)
 
 onboardingRoute.delete('/:id', requireRole('admin', 'manager'), async (c) => {
   const user = c.get('user')

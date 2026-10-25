@@ -138,7 +138,7 @@ export default function Layout() {
   useEffect(() => {
     if (!user) return
 
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token')
     if (!token) return
 
     const url = `/api/notifications/stream?token=${encodeURIComponent(token)}`
@@ -171,7 +171,6 @@ export default function Layout() {
       }
     }
   }, [user, queryClient])
-
 
   const markRead = useMutation({
     mutationFn: (id: number) => patch(`/notifications/${id}/read`),

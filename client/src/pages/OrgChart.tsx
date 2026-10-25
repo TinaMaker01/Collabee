@@ -173,9 +173,7 @@ export default function OrgChart() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {searchFilteredDepts.map((dept) => {
               const manager = dept.managerId ? employeeMap.get(dept.managerId) : null
-              const deptMembers = (employees ?? []).filter(
-                (e) => e.departmentId === dept.id && e.id !== dept.managerId,
-              )
+              const deptMembers = (employees ?? []).filter((e) => e.departmentId === dept.id && e.id !== dept.managerId)
               const isCollapsed = collapsedDepts[dept.id] ?? false
 
               return (
@@ -261,7 +259,9 @@ export default function OrgChart() {
                               )}
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{member.name}</p>
-                                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{member.position}</p>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                                  {member.position}
+                                </p>
                               </div>
                               <span
                                 className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${

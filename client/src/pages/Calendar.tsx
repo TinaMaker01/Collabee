@@ -62,9 +62,15 @@ export default function Calendar() {
   } | null>(null)
 
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: () => get<Employee[]>('/employees') })
-  const { data: departments } = useQuery({ queryKey: ['departments'], queryFn: () => get<Department[]>('/departments') })
+  const { data: departments } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => get<Department[]>('/departments'),
+  })
   const { data: leaveRequests } = useQuery({ queryKey: ['leave'], queryFn: () => get<LeaveRequest[]>('/leave') })
-  const { data: attendanceList } = useQuery({ queryKey: ['attendance'], queryFn: () => get<AttendanceRecord[]>('/attendance') })
+  const { data: attendanceList } = useQuery({
+    queryKey: ['attendance'],
+    queryFn: () => get<AttendanceRecord[]>('/attendance'),
+  })
 
   const empMap = useMemo(() => {
     const map = new Map<number, Employee>()
@@ -233,7 +239,10 @@ export default function Calendar() {
                   if (hasEvents) {
                     setSelectedDayDetails({
                       dateStr,
-                      leaves: leaves.map((l) => ({ empName: empMap.get(l.employeeId)?.name ?? `ID ${l.employeeId}`, type: l.type })),
+                      leaves: leaves.map((l) => ({
+                        empName: empMap.get(l.employeeId)?.name ?? `ID ${l.employeeId}`,
+                        type: l.type,
+                      })),
                       attendances: attendances.map((a) => ({
                         empName: empMap.get(a.employeeId)?.name ?? `ID ${a.employeeId}`,
                         status: a.status,
@@ -260,9 +269,7 @@ export default function Calendar() {
                     {date.getDate()}
                   </span>
                   {hasEvents && (
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {leaves.length + attendances.length}
-                    </span>
+                    <span className="text-[10px] text-gray-400 font-mono">{leaves.length + attendances.length}</span>
                   )}
                 </div>
 
@@ -358,7 +365,9 @@ export default function Calendar() {
                         </span>
                         <div className="flex items-center gap-2">
                           {a.checkIn && <span className="text-gray-400 font-mono text-[11px]">{a.checkIn}</span>}
-                          <span className={`px-2 py-0.5 rounded border text-[11px] ${attendanceColors[a.status] || ''}`}>
+                          <span
+                            className={`px-2 py-0.5 rounded border text-[11px] ${attendanceColors[a.status] || ''}`}
+                          >
                             {a.status}
                           </span>
                         </div>

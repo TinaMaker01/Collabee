@@ -71,11 +71,14 @@ export default function ForgotPassword() {
         {token ? (
           <>
             <p className="text-center text-gray-500 dark:text-gray-400 mb-8">{t('auth.reset_password_title')}</p>
-            <form onSubmit={(e) => { void handleSetPassword(e) }} className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                void handleSetPassword(e)
+              }}
+              className="space-y-4"
+            >
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  New Password
-                </label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password</label>
                 <input
                   type="password"
                   value={newPassword}
@@ -115,15 +118,20 @@ export default function ForgotPassword() {
             {submitted ? (
               <div className="text-center space-y-4">
                 <div className="p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-lg text-sm">
-                  If an account exists for <span className="font-semibold">{email}</span>, a password reset link has been
-                  sent.
+                  If an account exists for <span className="font-semibold">{email}</span>, a password reset link has
+                  been sent.
                 </div>
                 <Link to="/login" className="inline-block text-sm text-amber-600 hover:underline">
                   {t('auth.back_to_login')}
                 </Link>
               </div>
             ) : (
-              <form onSubmit={(e) => { void handleRequestReset(e) }} className="space-y-4">
+              <form
+                onSubmit={(e) => {
+                  void handleRequestReset(e)
+                }}
+                className="space-y-4"
+              >
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     {t('auth.email')}

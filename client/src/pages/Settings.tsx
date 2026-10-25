@@ -8,7 +8,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { put, get, patch } from '../api/client'
 import { toast } from 'sonner'
-import { SettingsIcon, UserIcon, MailIcon, SunIcon, MoonIcon, EyeIcon, EyeOffIcon, LockIcon, OrgChartIcon } from '../components/icons'
+import {
+  SettingsIcon,
+  UserIcon,
+  MailIcon,
+  SunIcon,
+  MoonIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LockIcon,
+  OrgChartIcon,
+} from '../components/icons'
 
 interface OrgData {
   organization: {
@@ -294,7 +304,11 @@ export default function Settings() {
         </div>
 
         {/* Organization / Workspace Section */}
-        <div role="region" aria-label={t('settings.organization')} className="border-t border-gray-200 dark:border-gray-700 pt-6">
+        <div
+          role="region"
+          aria-label={t('settings.organization')}
+          className="border-t border-gray-200 dark:border-gray-700 pt-6"
+        >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <OrgChartIcon className="w-5 h-5 text-amber-500" /> {t('settings.organization')}
@@ -379,7 +393,9 @@ export default function Settings() {
               {orgData?.stats && (
                 <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/60 grid grid-cols-3 gap-2 text-center">
                   <div className="p-2 bg-gray-50 dark:bg-gray-700/40 rounded-lg">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 block">{t('settings.org_departments')}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                      {t('settings.org_departments')}
+                    </span>
                     <span className="text-base font-bold text-gray-900 dark:text-white">
                       {orgData.stats.departmentsCount}
                     </span>
@@ -391,7 +407,9 @@ export default function Settings() {
                     </span>
                   </div>
                   <div className="p-2 bg-gray-50 dark:bg-gray-700/40 rounded-lg">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 block">{t('settings.org_employees')}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                      {t('settings.org_employees')}
+                    </span>
                     <span className="text-base font-bold text-gray-900 dark:text-white">
                       {orgData.stats.employeesCount}
                     </span>

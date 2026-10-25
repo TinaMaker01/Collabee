@@ -119,7 +119,10 @@ describe('Employees routes', () => {
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           limit: vi.fn().mockReturnValue({
-            offset: vi.fn().mockResolvedValue([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]),
+            offset: vi.fn().mockResolvedValue([
+              { id: 1, name: 'Alice' },
+              { id: 2, name: 'Bob' },
+            ]),
           }),
         }),
       } as any) // eslint-disable-line @typescript-eslint/no-explicit-any

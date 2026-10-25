@@ -141,18 +141,14 @@ export const onboardingTaskCreateSchema = z.object({
   employeeId: z.number().int().positive(),
   title: z.string().min(1, 'Title is required').max(255),
   description: z.string().optional(),
-  category: z
-    .enum(['profile', 'documents', 'team', 'tasks', 'security', 'attendance', 'general'])
-    .default('general'),
+  category: z.enum(['profile', 'documents', 'team', 'tasks', 'security', 'attendance', 'general']).default('general'),
   order: z.number().int().optional().default(0),
 })
 
 export const onboardingTaskUpdateSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
-  category: z
-    .enum(['profile', 'documents', 'team', 'tasks', 'security', 'attendance', 'general'])
-    .optional(),
+  category: z.enum(['profile', 'documents', 'team', 'tasks', 'security', 'attendance', 'general']).optional(),
   completed: z.boolean().optional(),
   order: z.number().int().optional(),
 })

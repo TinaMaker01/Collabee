@@ -195,9 +195,7 @@ describe('End-to-End Critical Flows (T7)', () => {
     vi.mocked(db.select)
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([
-            { id: 42, email: 'alice@collabee.local', name: 'Alice' },
-          ]),
+          where: vi.fn().mockResolvedValue([{ id: 42, email: 'alice@collabee.local', name: 'Alice' }]),
         }),
       } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .mockReturnValueOnce({

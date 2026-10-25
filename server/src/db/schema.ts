@@ -396,4 +396,3 @@ export const onboardingTasksRelations = relations(onboardingTasks, ({ one }) => 
     references: [employees.id],
   }),
 }))
-

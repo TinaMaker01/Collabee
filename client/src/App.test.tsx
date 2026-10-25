@@ -142,12 +142,7 @@ describe('React Component Unit Tests', () => {
     // 1. Normal data render
     act(() => {
       root.render(
-        <DataTable
-          columns={columns}
-          data={sampleData}
-          keyExtractor={(it: Item) => it.id}
-          ariaLabel="Task list"
-        />,
+        <DataTable columns={columns} data={sampleData} keyExtractor={(it: Item) => it.id} ariaLabel="Task list" />,
       )
     })
 
@@ -156,14 +151,7 @@ describe('React Component Unit Tests', () => {
 
     // 2. Empty state render
     act(() => {
-      root.render(
-        <DataTable
-          columns={columns}
-          data={[]}
-          keyExtractor={(it: Item) => it.id}
-          ariaLabel="Task list"
-        />,
-      )
+      root.render(<DataTable columns={columns} data={[]} keyExtractor={(it: Item) => it.id} ariaLabel="Task list" />)
     })
 
     expect(container.textContent).toContain('No data available')
@@ -228,4 +216,3 @@ describe('React Component Unit Tests', () => {
     container.remove()
   })
 })
-

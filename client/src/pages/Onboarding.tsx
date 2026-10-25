@@ -7,7 +7,17 @@ import { get, post, patch, del } from '../api/client'
 import { toast } from 'sonner'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Modal from '../components/Modal'
-import { RocketIcon, CheckIcon, PlusIcon, TrashIcon, DocumentIcon, OrgChartIcon, TasksIcon, SettingsIcon, AttendanceIcon } from '../components/icons'
+import {
+  RocketIcon,
+  CheckIcon,
+  PlusIcon,
+  TrashIcon,
+  DocumentIcon,
+  OrgChartIcon,
+  TasksIcon,
+  SettingsIcon,
+  AttendanceIcon,
+} from '../components/icons'
 
 interface OnboardingTask {
   id: number
@@ -77,7 +87,11 @@ export default function Onboarding() {
   const isManagerOrAdmin = user?.role === 'admin' || user?.role === 'manager'
 
   // User checklist query
-  const { data: checklistData, isLoading: isLoadingChecklist, error: checklistError } = useQuery<OnboardingData>({
+  const {
+    data: checklistData,
+    isLoading: isLoadingChecklist,
+    error: checklistError,
+  } = useQuery<OnboardingData>({
     queryKey: ['onboarding', 'checklist'],
     queryFn: () => get<OnboardingData>('/onboarding'),
   })
@@ -90,7 +104,9 @@ export default function Onboarding() {
   })
 
   // Employees query for assignment dropdown
-  const { data: employeesData } = useQuery<{ data?: EmployeeOption[]; employees?: EmployeeOption[] } | EmployeeOption[]>({
+  const { data: employeesData } = useQuery<
+    { data?: EmployeeOption[]; employees?: EmployeeOption[] } | EmployeeOption[]
+  >({
     queryKey: ['employees', 'list'],
     queryFn: () => get('/employees'),
     enabled: isManagerOrAdmin && isModalOpen,
@@ -106,7 +122,12 @@ export default function Onboarding() {
 
   // Toggle mutation
   const toggleMutation = useMutation({
-    mutationFn: (taskId: number) => patch<{ task: OnboardingTask; allCompleted: boolean; stats: { total: number; completed: number; percentage: number } }>(`/onboarding/${taskId}/toggle`),
+    mutationFn: (taskId: number) =>
+      patch<{
+        task: OnboardingTask
+        allCompleted: boolean
+        stats: { total: number; completed: number; percentage: number }
+      }>(`/onboarding/${taskId}/toggle`),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ['onboarding'] })
       if (data.allCompleted) {
@@ -124,8 +145,13 @@ export default function Onboarding() {
 
   // Create task mutation
   const createTaskMutation = useMutation({
-    mutationFn: (payload: { title: string; description?: string; category: string; dueDays: number; employeeId?: number }) =>
-      post('/onboarding', payload),
+    mutationFn: (payload: {
+      title: string
+      description?: string
+      category: string
+      dueDays: number
+      employeeId?: number
+    }) => post('/onboarding', payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['onboarding'] })
       toast.success(t('common.save_success'))
@@ -211,13 +237,9 @@ export default function Onboarding() {
         <div>
           <div className="flex items-center gap-2">
             <RocketIcon className="w-7 h-7 text-amber-600 dark:text-amber-400" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {t('onboarding.title')}
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('onboarding.title')}</h1>
           </div>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {t('onboarding.subtitle')}
-          </p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t('onboarding.subtitle')}</p>
         </div>
 
         {isManagerOrAdmin && (
@@ -274,9 +296,7 @@ export default function Onboarding() {
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {t('onboarding.progress')}
-                    </h2>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('onboarding.progress')}</h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {t('onboarding.completed_tasks', {
                         completed: stats.completed,
@@ -286,9 +306,7 @@ export default function Onboarding() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                      {stats.percentage}%
-                    </span>
+                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.percentage}%</span>
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         stats.percentage === 100
@@ -296,9 +314,7 @@ export default function Onboarding() {
                           : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
                       }`}
                     >
-                      {stats.percentage === 100
-                        ? t('onboarding.completed_badge')
-                        : t('onboarding.pending_badge')}
+                      {stats.percentage === 100 ? t('onboarding.completed_badge') : t('onboarding.pending_badge')}
                     </span>
                   </div>
                 </div>
@@ -424,9 +440,7 @@ export default function Onboarding() {
 
                 {filteredTasks.length === 0 ? (
                   <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <p className="text-gray-500 dark:text-gray-400">
-                      {t('onboarding.no_tasks')}
-                    </p>
+                    <p className="text-gray-500 dark:text-gray-400">{t('onboarding.no_tasks')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2.5">
@@ -473,14 +487,11 @@ export default function Onboarding() {
                               </span>
                             </div>
                             {task.description && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {task.description}
-                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{task.description}</p>
                             )}
                             {task.isCompleted && task.completedAt && (
                               <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">
-                                ✓ {t('onboarding.completed_badge')}{' '}
-                                {new Date(task.completedAt).toLocaleDateString()}
+                                ✓ {t('onboarding.completed_badge')} {new Date(task.completedAt).toLocaleDateString()}
                               </p>
                             )}
                           </div>
@@ -537,12 +548,8 @@ export default function Onboarding() {
                       (overviewData?.overview || []).map((item) => (
                         <tr key={item.employeeId} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
                           <td className="px-6 py-4">
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {item.name}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {item.email}
-                            </div>
+                            <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{item.email}</div>
                           </td>
                           <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
                             {item.department || t('common.not_available')}
@@ -588,11 +595,7 @@ export default function Onboarding() {
       )}
 
       {/* Assign Task Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={t('onboarding.add_task')}
-      >
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('onboarding.add_task')}>
         <form onSubmit={handleCreateTask} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

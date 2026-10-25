@@ -16,12 +16,15 @@ async function notifyTaskAssignee(employeeId: number, taskTitle: string) {
     if (!emp) return
     const [targetUser] = await db.select().from(users).where(eq(users.email, emp.email))
     if (!targetUser) return
-    const [inserted] = await db.insert(notifications).values({
-      userId: targetUser.id,
-      title: 'New Task Assigned',
-      message: `You have been assigned to task: "${taskTitle}"`,
-      type: 'info',
-    }).returning()
+    const [inserted] = await db
+      .insert(notifications)
+      .values({
+        userId: targetUser.id,
+        title: 'New Task Assigned',
+        message: `You have been assigned to task: "${taskTitle}"`,
+        type: 'info',
+      })
+      .returning()
     if (inserted) {
       emitNotification(targetUser.id, inserted)
     }

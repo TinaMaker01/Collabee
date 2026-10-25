@@ -210,8 +210,7 @@ export default function Attendance() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Collabee</h1>
             <p className="text-sm text-gray-600">
-              {t('page.attendance')} — {t('common.report_generated_on')}{' '}
-              {new Date().toLocaleDateString()}
+              {t('page.attendance')} — {t('common.report_generated_on')} {new Date().toLocaleDateString()}
             </p>
           </div>
           <div className="text-right text-xs text-gray-500">

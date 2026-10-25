@@ -1,10 +1,5 @@
 const CACHE_NAME = 'collabee-cache-v1'
-const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/favicon.svg'
-]
+const PRECACHE_URLS = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg']
 
 // Install event: Precache core static shell
 self.addEventListener('install', (event) => {
@@ -12,7 +7,7 @@ self.addEventListener('install', (event) => {
     caches
       .open(CACHE_NAME)
       .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
+      .then(() => self.skipWaiting()),
   )
 })
 
@@ -22,13 +17,9 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((cacheNames) =>
-        Promise.all(
-          cacheNames
-            .filter((name) => name !== CACHE_NAME)
-            .map((name) => caches.delete(name))
-        )
+        Promise.all(cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))),
       )
-      .then(() => self.clients.claim())
+      .then(() => self.clients.claim()),
   )
 })
 
@@ -58,7 +49,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse
         })
-      })
+      }),
     )
     return
   }
@@ -78,7 +69,7 @@ self.addEventListener('fetch', (event) => {
           const cachedIndex = await caches.match('/index.html')
           if (cachedIndex) return cachedIndex
           return caches.match('/')
-        })
+        }),
     )
   }
 })

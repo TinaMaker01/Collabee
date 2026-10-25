@@ -34,6 +34,10 @@ vi.mock('../services/auth.js', () => ({
   verifyPassword: vi.fn(),
 }))
 
+vi.mock('../utils/activityLogger.js', () => ({
+  logActivity: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { createUser, authenticateUser, generateToken, getUserById, verifyToken } from '../services/auth.js'
 import { db } from '../db/index.js'
 

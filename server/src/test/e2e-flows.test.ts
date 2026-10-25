@@ -42,6 +42,22 @@ describe('End-to-End Critical Flows (T7)', () => {
     const body = await res.json()
     expect(body.status).toBe('ok')
     expect(body.db).toBe('connected')
+    expect(body.uptime).toBeDefined()
+
+    // Test liveness probe
+    const liveRes = await app.request('/api/health/live')
+    expect(liveRes.status).toBe(200)
+    const liveBody = await liveRes.json()
+    expect(liveBody.status).toBe('live')
+    expect(liveBody.pid).toBeDefined()
+
+    // Test readiness probe
+    const readyRes = await app.request('/api/health/ready')
+    expect(readyRes.status).toBe(200)
+    const readyBody = await readyRes.json()
+    expect(readyBody.status).toBe('ready')
+    expect(readyBody.database).toBe('connected')
+    expect(readyBody.memory).toBeDefined()
 
     // Verify critical OWASP security headers
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff')

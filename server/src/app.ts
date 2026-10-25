@@ -111,9 +111,57 @@ export function createApp() {
   app.get('/api/health', async (c) => {
     try {
       await db.execute(sql`SELECT 1`)
-      return c.json({ status: 'ok', db: 'connected' })
+      return c.json({
+        status: 'ok',
+        db: 'connected',
+        uptime: Math.round(process.uptime()),
+        timestamp: new Date().toISOString(),
+      })
     } catch {
       return c.json({ status: 'error', db: 'disconnected' }, 503)
+    }
+  })
+
+  // Liveness probe (verifies process is alive and responsive)
+  app.get('/api/health/live', (c) => {
+    return c.json({
+      status: 'live',
+      uptime: Math.round(process.uptime()),
+      pid: process.pid,
+      timestamp: new Date().toISOString(),
+    })
+  })
+
+  // Readiness probe (verifies DB connectivity & memory health)
+  app.get('/api/health/ready', async (c) => {
+    const mem = process.memoryUsage()
+    const memory = {
+      rss: `${(mem.rss / 1024 / 1024).toFixed(1)}MB`,
+      heapTotal: `${(mem.heapTotal / 1024 / 1024).toFixed(1)}MB`,
+      heapUsed: `${(mem.heapUsed / 1024 / 1024).toFixed(1)}MB`,
+    }
+
+    try {
+      await db.execute(sql`SELECT 1`)
+      return c.json({
+        status: 'ready',
+        database: 'connected',
+        uptime: Math.round(process.uptime()),
+        nodeVersion: process.version,
+        memory,
+        timestamp: new Date().toISOString(),
+      })
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Database check failed'
+      return c.json(
+        {
+          status: 'not_ready',
+          database: 'disconnected',
+          error: errorMsg,
+          timestamp: new Date().toISOString(),
+        },
+        503,
+      )
     }
   })
 

@@ -247,6 +247,7 @@
     "not_available": "N/A",
     "close": "Close",
     "print_pdf": "Print / PDF",
-    "report_generated_on": "Report generated on"
+    "report_generated_on": "Report generated on",
+    "offline_notice": "You are currently offline. Changes will sync when connectivity is restored."
   }
 }

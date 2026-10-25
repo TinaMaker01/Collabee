@@ -247,6 +247,7 @@
     "not_available": "N/D",
     "close": "Fermer",
     "print_pdf": "Imprimer / PDF",
-    "report_generated_on": "Rapport généré le"
+    "report_generated_on": "Rapport généré le",
+    "offline_notice": "Vous êtes actuellement hors-ligne. Les modifications seront synchronisées dès le rétablissement de la connexion."
   }
 }

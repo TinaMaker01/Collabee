@@ -76,6 +76,18 @@ export default function Layout() {
   const notifRef = useRef<HTMLDivElement>(null)
   const { t, i18n } = useTranslation()
   const [now, setNow] = useState(() => Date.now())
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true))
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60000)
@@ -206,6 +218,15 @@ export default function Layout() {
       >
         {t('action.skip_to_content')}
       </a>
+      {!isOnline && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="bg-amber-600 text-white text-xs px-4 py-1.5 text-center font-medium shadow-sm flex items-center justify-center gap-2 z-50"
+        >
+          <span>⚠️ {t('common.offline_notice')}</span>
+        </div>
+      )}
       <header
         role="banner"
         className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3 flex items-center justify-between shadow-sm"

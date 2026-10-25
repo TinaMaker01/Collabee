@@ -137,6 +137,26 @@ export const userUpdateSchema = z.object({
   role: z.enum(['user', 'manager', 'admin']).optional(),
 })
 
+export const onboardingTaskCreateSchema = z.object({
+  employeeId: z.number().int().positive(),
+  title: z.string().min(1, 'Title is required').max(255),
+  description: z.string().optional(),
+  category: z
+    .enum(['profile', 'documents', 'team', 'tasks', 'security', 'attendance', 'general'])
+    .default('general'),
+  order: z.number().int().optional().default(0),
+})
+
+export const onboardingTaskUpdateSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  description: z.string().optional(),
+  category: z
+    .enum(['profile', 'documents', 'team', 'tasks', 'security', 'attendance', 'general'])
+    .optional(),
+  completed: z.boolean().optional(),
+  order: z.number().int().optional(),
+})
+
 export const LEAVE_DEFAULTS = {
   annual: 20,
   sick: 10,

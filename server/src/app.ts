@@ -17,6 +17,7 @@ import leaveBalanceRoute from './routes/leaveBalance.js'
 import documentsRoute from './routes/documents.js'
 import activityLogsRoute from './routes/activityLogs.js'
 import dashboardRoute from './routes/dashboard.js'
+import onboardingRoute from './routes/onboarding.js'
 
 function parseEnvInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback
@@ -148,6 +149,7 @@ export function createApp() {
   app.route('/api/documents', documentsRoute)
   app.route('/api/activity-logs', activityLogsRoute)
   app.route('/api/dashboard', dashboardRoute)
+  app.route('/api/onboarding', onboardingRoute)
 
   return app
 }

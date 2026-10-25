@@ -101,6 +101,7 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
   leaveRequests: many(leaveRequests),
   tasks: many(tasks),
   documents: many(documents),
+  onboardingTasks: many(onboardingTasks),
 }))
 
 /**
@@ -331,3 +332,37 @@ export const documentsRelations = relations(documents, ({ one }) => ({
     references: [employees.id],
   }),
 }))
+
+/**
+ * Onboarding milestone checklist for new employees.
+ */
+export const onboardingTasks = pgTable(
+  'onboarding_tasks',
+  {
+    id: serial('id').primaryKey(),
+    employeeId: integer('employee_id').notNull(),
+    title: varchar('title', { length: 255 }).notNull(),
+    description: text('description'),
+    category: varchar('category', { length: 50 }).notNull().default('general'),
+    completed: boolean('completed').notNull().default(false),
+    completedAt: timestamp('completed_at'),
+    order: integer('order').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    employeeFk: foreignKey({
+      columns: [table.employeeId],
+      foreignColumns: [employees.id],
+    }).onDelete('cascade'),
+    employeeIdIdx: index('onboarding_tasks_employee_id_idx').on(table.employeeId),
+    completedIdx: index('onboarding_tasks_completed_idx').on(table.completed),
+  }),
+)
+
+export const onboardingTasksRelations = relations(onboardingTasks, ({ one }) => ({
+  employee: one(employees, {
+    fields: [onboardingTasks.employeeId],
+    references: [employees.id],
+  }),
+}))
+

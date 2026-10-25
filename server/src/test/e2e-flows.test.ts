@@ -73,6 +73,7 @@ describe('End-to-End Critical Flows (T7)', () => {
       role: 'admin',
       passwordHash: 'hashed',
       avatarUrl: null,
+      organizationId: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
     }

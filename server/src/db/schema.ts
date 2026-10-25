@@ -13,6 +13,27 @@ import {
 import { relations } from 'drizzle-orm'
 
 /**
+ * Organizations table supporting multi-tenant workspace isolation.
+ */
+export const organizations = pgTable('organizations', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
+  domain: varchar('domain', { length: 255 }),
+  logoUrl: text('logo_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+})
+
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  departments: many(departments),
+  users: many(users),
+}))
+
+/**
  * System users with authentication credentials and role-based access control.
  * Roles: user, manager, admin.
  * Each user can create tasks and receive notifications.
@@ -24,13 +45,18 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   role: varchar('role', { length: 20 }).notNull().default('user'),
   avatarUrl: text('avatar_url'),
+  organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
     .$onUpdate(() => new Date()),
 })
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [users.organizationId],
+    references: [organizations.id],
+  }),
   leaveRequests: many(leaveRequests),
   tasks: many(tasks),
   notifications: many(notifications),
@@ -47,6 +73,7 @@ export const departments = pgTable(
     name: varchar('name', { length: 255 }).notNull().unique(),
     description: text('description'),
     managerId: integer('manager_id'),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => ({
@@ -54,7 +81,11 @@ export const departments = pgTable(
   }),
 )
 
-export const departmentsRelations = relations(departments, ({ many }) => ({
+export const departmentsRelations = relations(departments, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [departments.organizationId],
+    references: [organizations.id],
+  }),
   employees: many(employees),
   tasks: many(tasks),
 }))

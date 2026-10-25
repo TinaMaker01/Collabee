@@ -128,6 +128,13 @@ export default function Layout() {
     refetchOnWindowFocus: true,
   })
 
+  const orgQuery = useQuery<{ organization: { name: string; slug: string } }>({
+    queryKey: ['organization'],
+    queryFn: () => get('/organization'),
+    enabled: !!user,
+    staleTime: 60 * 1000,
+  })
+
   useEffect(() => {
     if (!user) return
 
@@ -243,6 +250,11 @@ export default function Layout() {
             </svg>
           </button>
           <h1 className="text-xl font-bold text-amber-600">Collabee</h1>
+          {orgQuery.data?.organization?.name && (
+            <span className="hidden md:inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+              {orgQuery.data.organization.name}
+            </span>
+          )}
           <button
             onClick={() => setSearchOpen(true)}
             className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 ml-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/60 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500"

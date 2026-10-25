@@ -157,6 +157,12 @@ export const onboardingTaskUpdateSchema = z.object({
   order: z.number().int().optional(),
 })
 
+export const organizationUpdateSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255).optional(),
+  slug: z.string().min(1).max(100).optional(),
+  domain: z.string().max(255).optional(),
+})
+
 export const LEAVE_DEFAULTS = {
   annual: 20,
   sick: 10,

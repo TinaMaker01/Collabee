@@ -183,7 +183,17 @@
     "new_password": "New Password",
     "confirm_password": "Confirm Password",
     "password_updated": "Password updated successfully",
-    "password_error": "Failed to update password"
+    "password_error": "Failed to update password",
+    "organization": "Workspace & Organization",
+    "org_name": "Organization Name",
+    "org_slug": "Workspace Identifier (Slug)",
+    "org_domain": "Primary Domain",
+    "org_stats": "Workspace Statistics",
+    "org_updated": "Workspace settings updated successfully",
+    "org_departments": "Departments",
+    "org_members": "Users",
+    "org_employees": "Total Staff",
+    "edit_workspace": "Update Workspace"
   },
   "leave_balance": {
     "annual": "Annual",

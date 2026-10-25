@@ -183,7 +183,17 @@
     "new_password": "Nouveau mot de passe",
     "confirm_password": "Confirmer le mot de passe",
     "password_updated": "Mot de passe mis à jour",
-    "password_error": "Échec de la mise à jour"
+    "password_error": "Échec de la mise à jour",
+    "organization": "Espace de travail & Organisation",
+    "org_name": "Nom de l'organisation",
+    "org_slug": "Identifiant de l'espace (Slug)",
+    "org_domain": "Domaine principal",
+    "org_stats": "Statistiques de l'espace",
+    "org_updated": "Paramètres de l'organisation mis à jour avec succès",
+    "org_departments": "Départements",
+    "org_members": "Utilisateurs",
+    "org_employees": "Effectif total",
+    "edit_workspace": "Mettre à jour l'espace"
   },
   "leave_balance": {
     "annual": "Annuel",

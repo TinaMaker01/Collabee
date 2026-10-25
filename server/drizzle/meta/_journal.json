@@ -29,6 +29,13 @@
       "when": 1781105706227,
       "tag": "0003_add_onboarding_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781105706228,
+      "tag": "0004_add_organizations_multi_tenant",
+      "breakpoints": true
     }
   ]
 }

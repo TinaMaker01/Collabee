@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { eq, asc, sql } from 'drizzle-orm'
+import { eq, and, asc, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { onboardingTasks, employees, users, departments, notifications } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
@@ -8,6 +8,15 @@ import { NotFoundError, ForbiddenError } from '../middleware/error.js'
 import { onboardingTaskCreateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { emitNotification } from '../services/notificationEvents.js'
+import { requireTenantId } from '../services/tenant.js'
+
+async function findEmployeeInTenant(employeeId: number, tenantId: number) {
+  const [emp] = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(and(eq(employees.id, employeeId), eq(employees.organizationId, tenantId)))
+  return emp ?? null
+}
 
 const DEFAULT_ONBOARDING_TASKS = [
   {
@@ -71,6 +80,7 @@ onboardingRoute.use('*', protectRoute)
 
 onboardingRoute.get('/', async (c) => {
   const user = c.get('user')
+  const tenantId = await requireTenantId(c)
   const employeeIdParam = c.req.query('employeeId')
   const view = c.req.query('view')
 
@@ -87,9 +97,10 @@ onboardingRoute.get('/', async (c) => {
       })
       .from(employees)
       .leftJoin(departments, eq(employees.departmentId, departments.id))
+      .where(eq(employees.organizationId, tenantId))
       .orderBy(asc(employees.name))
 
-    const allTasks = await db.select().from(onboardingTasks)
+    const allTasks = await db.select().from(onboardingTasks).where(eq(onboardingTasks.organizationId, tenantId))
 
     const summaries = allEmployees.map((emp) => {
       const empTasks = allTasks.filter((t) => t.employeeId === emp.id)
@@ -112,17 +123,26 @@ onboardingRoute.get('/', async (c) => {
 
   if (employeeIdParam) {
     if (user.role === 'user') {
-      const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+      const [emp] = await db
+        .select()
+        .from(employees)
+        .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
       if (!emp || emp.id !== parseInt(employeeIdParam, 10)) {
         throw new ForbiddenError('You can only view your own onboarding checklist')
       }
       targetEmployeeId = emp.id
     } else {
-      targetEmployeeId = parseInt(employeeIdParam, 10)
+      const parsedId = parseInt(employeeIdParam, 10)
+      const emp = isNaN(parsedId) ? null : await findEmployeeInTenant(parsedId, tenantId)
+      if (!emp) throw new NotFoundError('Employee not found')
+      targetEmployeeId = emp.id
     }
   } else {
     // Current user's employee profile
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp) {
       return c.json({ tasks: [], stats: { total: 0, completed: 0, percent: 0 } })
     }
@@ -137,7 +157,7 @@ onboardingRoute.get('/', async (c) => {
   let tasksList = await db
     .select()
     .from(onboardingTasks)
-    .where(eq(onboardingTasks.employeeId, targetEmployeeId))
+    .where(and(eq(onboardingTasks.employeeId, targetEmployeeId), eq(onboardingTasks.organizationId, tenantId)))
     .orderBy(asc(onboardingTasks.order), asc(onboardingTasks.id))
 
   if (tasksList.length === 0) {
@@ -145,7 +165,7 @@ onboardingRoute.get('/', async (c) => {
     tasksList = await db
       .select()
       .from(onboardingTasks)
-      .where(eq(onboardingTasks.employeeId, targetEmployeeId))
+      .where(and(eq(onboardingTasks.employeeId, targetEmployeeId), eq(onboardingTasks.organizationId, tenantId)))
       .orderBy(asc(onboardingTasks.order), asc(onboardingTasks.id))
   }
 
@@ -168,12 +188,19 @@ onboardingRoute.patch('/:id/toggle', async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid task ID')
+  const tenantId = await requireTenantId(c)
 
-  const [task] = await db.select().from(onboardingTasks).where(eq(onboardingTasks.id, id))
+  const [task] = await db
+    .select()
+    .from(onboardingTasks)
+    .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.organizationId, tenantId)))
   if (!task) throw new NotFoundError('Onboarding task not found')
 
   if (user.role === 'user') {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp || emp.id !== task.employeeId) {
       throw new ForbiddenError('You can only update your own onboarding tasks')
     }
@@ -186,7 +213,7 @@ onboardingRoute.patch('/:id/toggle', async (c) => {
       completed: newCompleted,
       completedAt: newCompleted ? new Date() : null,
     })
-    .where(eq(onboardingTasks.id, id))
+    .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.organizationId, tenantId)))
     .returning()
 
   await logActivity(
@@ -199,7 +226,10 @@ onboardingRoute.patch('/:id/toggle', async (c) => {
 
   // Check if all tasks for this employee are now complete
   if (newCompleted) {
-    const allEmpTasks = await db.select().from(onboardingTasks).where(eq(onboardingTasks.employeeId, task.employeeId))
+    const allEmpTasks = await db
+      .select()
+      .from(onboardingTasks)
+      .where(and(eq(onboardingTasks.employeeId, task.employeeId), eq(onboardingTasks.organizationId, tenantId)))
 
     const allFinished = allEmpTasks.length > 0 && allEmpTasks.every((t) => t.completed)
     if (allFinished) {
@@ -232,16 +262,17 @@ onboardingRoute.post(
   zValidator('json', onboardingTaskCreateSchema),
   async (c) => {
     const user = c.get('user')
+    const tenantId = await requireTenantId(c)
     const body = c.req.valid('json')
 
-    const [newEmployee] = await db.select().from(employees).where(eq(employees.id, body.employeeId))
+    const newEmployee = await findEmployeeInTenant(body.employeeId, tenantId)
     if (!newEmployee) throw new NotFoundError('Employee not found')
 
     const [inserted] = await db
       .insert(onboardingTasks)
       .values({
         employeeId: body.employeeId,
-        organizationId: newEmployee.organizationId,
+        organizationId: tenantId,
         title: body.title,
         description: body.description,
         category: body.category,
@@ -260,8 +291,12 @@ onboardingRoute.delete('/:id', requireRole('admin', 'manager'), async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid task ID')
+  const tenantId = await requireTenantId(c)
 
-  const [deleted] = await db.delete(onboardingTasks).where(eq(onboardingTasks.id, id)).returning()
+  const [deleted] = await db
+    .delete(onboardingTasks)
+    .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.organizationId, tenantId)))
+    .returning()
   if (!deleted) throw new NotFoundError('Onboarding task not found')
 
   await logActivity(user.id, 'delete', 'onboarding', id, `Deleted onboarding task "${deleted.title}"`)

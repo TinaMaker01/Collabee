@@ -17,7 +17,7 @@ import {
   verifyPassword,
   hashPassword,
 } from '../services/auth.js'
-import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from '../middleware/error.js'
+import { ConflictError, NotFoundError, UnauthorizedError, ValidationError, getPgErrorInfo } from '../middleware/error.js'
 import { db } from '../db/index.js'
 import { users } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
@@ -55,7 +55,7 @@ authRoute.post('/register', validateRegister, async (c) => {
       201,
     )
   } catch (err: unknown) {
-    const pgErr = err as { constraint?: string; code?: string }
+    const pgErr = getPgErrorInfo(err)
     if (pgErr.constraint === 'users_email_unique' || pgErr.code === '23505') {
       throw new ConflictError('Email already in use')
     }

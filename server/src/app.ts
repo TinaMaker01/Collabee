@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm'
 import NodeCache from 'node-cache'
 import { db } from './db/index.js'
 import { logger } from './utils/logger.js'
-import { AppError } from './middleware/error.js'
+import { AppError, getPgErrorInfo } from './middleware/error.js'
 import employeesRoute from './routes/employees.js'
 import authRoute from './routes/auth.js'
 import departmentsRoute from './routes/departments.js'
@@ -171,7 +171,7 @@ export function createApp() {
       c.status(err.statusCode as 400 | 401 | 403 | 404 | 409 | 500)
       return c.json({ error: { code: err.code, message: err.message, details: err.details } })
     }
-    const pgErr = err as { code?: string; constraint?: string }
+    const pgErr = getPgErrorInfo(err)
     if (pgErr.code === '23505') {
       return c.json({ error: { code: 'CONFLICT', message: 'A record with that value already exists' } }, 409)
     }

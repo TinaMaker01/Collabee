@@ -7,7 +7,7 @@ import { protectRoute, requireRole } from '../middleware/auth.js'
 import { organizationUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { requireTenantId } from '../services/tenant.js'
-import { NotFoundError, ConflictError } from '../middleware/error.js'
+import { NotFoundError, ConflictError, getPgErrorInfo } from '../middleware/error.js'
 
 const organizationRoute = new Hono()
 
@@ -52,7 +52,7 @@ organizationRoute.patch('/', requireRole('admin'), zValidator('json', organizati
       .where(eq(organizations.id, tenantId))
       .returning()
   } catch (err: unknown) {
-    const pgErr = err as { constraint?: string; code?: string }
+    const pgErr = getPgErrorInfo(err)
     if (pgErr.constraint === 'organizations_slug_unique' || pgErr.code === '23505') {
       throw new ConflictError('Slug already in use')
     }

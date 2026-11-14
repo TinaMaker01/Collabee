@@ -46,3 +46,22 @@ export class ConflictError extends AppError {
     this.name = 'ConflictError'
   }
 }
+
+/**
+ * Pentest finding (Low): every call site that tried to detect a Postgres
+ * unique/FK violation checked `err.code` / `err.constraint` directly, but
+ * the `postgres` driver's real error — code, constraint_name, etc. — is
+ * wrapped by Drizzle in `err.cause`, not present on the top-level error at
+ * all. Neither property existed, so these checks silently never matched
+ * and every such violation fell through to a generic 500 instead of a
+ * 409/400. This unwraps `cause` and normalizes the Postgres driver's
+ * snake_case `constraint_name` into `constraint` for callers.
+ */
+export function getPgErrorInfo(err: unknown): { code?: string; constraint?: string } {
+  const top = err as { code?: string; constraint?: string; cause?: unknown }
+  const cause = top?.cause as { code?: string; constraint_name?: string } | undefined
+  return {
+    code: top?.code ?? cause?.code,
+    constraint: top?.constraint ?? cause?.constraint_name,
+  }
+}

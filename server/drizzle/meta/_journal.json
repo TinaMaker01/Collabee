@@ -36,6 +36,13 @@
       "when": 1781105706228,
       "tag": "0004_add_organizations_multi_tenant",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781105706229,
+      "tag": "0005_fix_org_sequence_and_backfill",
+      "breakpoints": true
     }
   ]
 }

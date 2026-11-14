@@ -19,7 +19,6 @@ organizationRoute.get('/', async (c) => {
     const [created] = await db
       .insert(organizations)
       .values({
-        id: 1,
         name: 'Collabee HQ',
         slug: 'collabee-hq',
         domain: 'collabee.com',
@@ -51,7 +50,6 @@ organizationRoute.patch('/', requireRole('admin'), zValidator('json', organizati
     const [created] = await db
       .insert(organizations)
       .values({
-        id: 1,
         name: body.name || 'Collabee HQ',
         slug: body.slug || 'collabee-hq',
         domain: body.domain || 'collabee.com',

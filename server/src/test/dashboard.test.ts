@@ -37,17 +37,23 @@ describe('Dashboard aggregated stats route', () => {
 
     // Users count
     vi.mocked(db.select).mockReturnValueOnce({
-      from: vi.fn().mockResolvedValue([{ value: 12 }]),
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ value: 12 }]),
+      }),
     } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
     // Employees count
     vi.mocked(db.select).mockReturnValueOnce({
-      from: vi.fn().mockResolvedValue([{ value: 8 }]),
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ value: 8 }]),
+      }),
     } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
     // Dept count
     vi.mocked(db.select).mockReturnValueOnce({
-      from: vi.fn().mockResolvedValue([{ value: 3 }]),
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ value: 3 }]),
+      }),
     } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
     // Pending leave count

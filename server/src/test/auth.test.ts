@@ -10,7 +10,7 @@ interface MockUser {
   role: string
   passwordHash: string
   avatarUrl: string | null
-  organizationId: number | null
+  organizationId: number
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -98,7 +98,7 @@ describe('Auth routes', () => {
       role: 'user',
       passwordHash: '',
       avatarUrl: null,
-      organizationId: null,
+      organizationId: 1,
       createdAt: null,
       updatedAt: null,
     }
@@ -135,7 +135,7 @@ describe('Auth routes', () => {
       role: 'user',
       passwordHash: '',
       avatarUrl: null,
-      organizationId: null,
+      organizationId: 1,
       createdAt: null,
       updatedAt: null,
     }
@@ -176,7 +176,7 @@ describe('Auth routes', () => {
       role: 'user',
       passwordHash: '',
       avatarUrl: null,
-      organizationId: null,
+      organizationId: 1,
       createdAt: null,
       updatedAt: null,
     }

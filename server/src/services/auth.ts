@@ -29,7 +29,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash)
 }
 
-export async function createUser(name: string, email: string, password: string, organizationId?: number | null) {
+export async function createUser(name: string, email: string, password: string, organizationId: number) {
   const passwordHash = await hashPassword(password)
   const [user] = await db
     .insert(users)
@@ -38,7 +38,7 @@ export async function createUser(name: string, email: string, password: string, 
       email,
       passwordHash,
       role: 'user',
-      organizationId: organizationId ?? null,
+      organizationId,
     })
     .returning()
   return user

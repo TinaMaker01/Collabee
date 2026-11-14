@@ -45,7 +45,9 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   role: varchar('role', { length: 20 }).notNull().default('user'),
   avatarUrl: text('avatar_url'),
-  organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
+  organizationId: integer('organization_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'restrict' }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
@@ -73,7 +75,9 @@ export const departments = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
     managerId: integer('manager_id'),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => ({
@@ -110,7 +114,9 @@ export const employees = pgTable(
     phone: varchar('phone', { length: 50 }),
     avatarUrl: text('avatar_url'),
     departmentId: integer('department_id'),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     hireDate: timestamp('hire_date'),
     salary: integer('salary'),
     status: varchar('status', { length: 50 }).default('active'),
@@ -156,7 +162,9 @@ export const attendance = pgTable(
   {
     id: serial('id').primaryKey(),
     employeeId: integer('employee_id').notNull(),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     date: timestamp('date').notNull(),
     checkIn: timestamp('check_in'),
     checkOut: timestamp('check_out'),
@@ -192,7 +200,9 @@ export const leaveRequests = pgTable(
   {
     id: serial('id').primaryKey(),
     employeeId: integer('employee_id').notNull(),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     type: varchar('type', { length: 50 }).notNull(),
     startDate: timestamp('start_date').notNull(),
     endDate: timestamp('end_date').notNull(),
@@ -245,7 +255,9 @@ export const tasks = pgTable(
     assignedTo: integer('assigned_to'),
     createdBy: integer('created_by').notNull(),
     departmentId: integer('department_id'),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     status: varchar('status', { length: 50 }).notNull().default('todo'),
     priority: varchar('priority', { length: 50 }).notNull().default('medium'),
     dueDate: timestamp('due_date'),
@@ -301,7 +313,9 @@ export const notifications = pgTable(
   {
     id: serial('id').primaryKey(),
     userId: integer('user_id').notNull(),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     title: varchar('title', { length: 255 }).notNull(),
     message: text('message').notNull(),
     type: varchar('type', { length: 50 }).notNull().default('info'),
@@ -338,7 +352,9 @@ export const activityLogs = pgTable(
   {
     id: serial('id').primaryKey(),
     userId: integer('user_id').notNull(),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     action: varchar('action', { length: 50 }).notNull(),
     entityType: varchar('entity_type', { length: 50 }).notNull(),
     entityId: integer('entity_id'),
@@ -375,7 +391,9 @@ export const documents = pgTable(
   {
     id: serial('id').primaryKey(),
     employeeId: integer('employee_id').notNull(),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     title: varchar('title', { length: 255 }).notNull(),
     url: text('url').notNull(),
     type: varchar('type', { length: 50 }),
@@ -409,7 +427,9 @@ export const onboardingTasks = pgTable(
   {
     id: serial('id').primaryKey(),
     employeeId: integer('employee_id').notNull(),
-    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
     title: varchar('title', { length: 255 }).notNull(),
     description: text('description'),
     category: varchar('category', { length: 50 }).notNull().default('general'),

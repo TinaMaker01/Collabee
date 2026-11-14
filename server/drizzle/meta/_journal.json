@@ -50,6 +50,13 @@
       "when": 1781105706230,
       "tag": "0006_tenant_scope_core_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781105706231,
+      "tag": "0007_lock_organization_id_not_null",
+      "breakpoints": true
     }
   ]
 }

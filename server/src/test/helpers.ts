@@ -33,8 +33,8 @@ export async function teardownTestDb() {
   }
 }
 
-export async function createTestUser() {
-  const user = await createUser('Test User', 'test@example.com', 'password123')
+export async function createTestUser(organizationId = 1) {
+  const user = await createUser('Test User', 'test@example.com', 'password123', organizationId)
   const token = await generateToken({
     id: user.id,
     email: user.email,

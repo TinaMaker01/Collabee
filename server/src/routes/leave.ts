@@ -14,6 +14,14 @@ import { logger } from '../utils/logger.js'
 import { emitNotification } from '../services/notificationEvents.js'
 import { requireTenantId } from '../services/tenant.js'
 
+async function assertEmployeeInTenant(employeeId: number, tenantId: number) {
+  const [emp] = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(and(eq(employees.id, employeeId), eq(employees.organizationId, tenantId)))
+  if (!emp) throw new ValidationError('employeeId does not belong to your organization')
+}
+
 async function notifyEmployee(tx: TxClient, employeeId: number, title: string, message: string, type: string) {
   const [emp] = await tx.select().from(employees).where(eq(employees.id, employeeId))
   if (!emp) {
@@ -40,12 +48,21 @@ leaveRoute.use('*', protectRoute)
 
 leaveRoute.get('/', async (c) => {
   const user = c.get('user')
+  const tenantId = await requireTenantId(c)
   const employeeId = c.req.query('employeeId')
 
   if (user.role === 'user') {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp) return c.json([])
-    const data = await withCache(c, () => db.select().from(leaveRequests).where(eq(leaveRequests.employeeId, emp.id)))
+    const data = await withCache(c, () =>
+      db
+        .select()
+        .from(leaveRequests)
+        .where(and(eq(leaveRequests.employeeId, emp.id), eq(leaveRequests.organizationId, tenantId))),
+    )
     return c.json(data)
   }
 
@@ -53,10 +70,10 @@ leaveRoute.get('/', async (c) => {
     const data = await db
       .select()
       .from(leaveRequests)
-      .where(eq(leaveRequests.employeeId, parseInt(employeeId, 10)))
+      .where(and(eq(leaveRequests.employeeId, parseInt(employeeId, 10)), eq(leaveRequests.organizationId, tenantId)))
     return c.json(data)
   }
-  const data = await withCache(c, () => db.select().from(leaveRequests))
+  const data = await withCache(c, () => db.select().from(leaveRequests).where(eq(leaveRequests.organizationId, tenantId)))
   return c.json(data)
 })
 
@@ -64,11 +81,18 @@ leaveRoute.get('/:id', async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid ID')
-  const [request] = await db.select().from(leaveRequests).where(eq(leaveRequests.id, id))
+  const tenantId = await requireTenantId(c)
+  const [request] = await db
+    .select()
+    .from(leaveRequests)
+    .where(and(eq(leaveRequests.id, id), eq(leaveRequests.organizationId, tenantId)))
   if (!request) throw new NotFoundError('Leave request not found')
 
   if (user.role === 'user') {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp || request.employeeId !== emp.id) {
       throw new NotFoundError('Leave request not found')
     }
@@ -83,10 +107,15 @@ leaveRoute.post('/', zValidator('json', leaveRequestSchema), async (c) => {
   const organizationId = await requireTenantId(c)
 
   if (user.role === 'user') {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, organizationId)))
     if (!emp || body.employeeId !== emp.id) {
       throw new ForbiddenError('Cannot submit leave request for another employee')
     }
+  } else {
+    await assertEmployeeInTenant(body.employeeId, organizationId)
   }
 
   const newRequest = await db.transaction(async (tx) => {
@@ -148,6 +177,7 @@ leaveRoute.post('/', zValidator('json', leaveRequestSchema), async (c) => {
 leaveRoute.put('/:id/approve', requireRole('admin', 'manager'), async (c) => {
   const id = parseInt(c.req.param('id')!, 10)
   const user = c.get('user')
+  const tenantId = await requireTenantId(c)
 
   const updated = await db.transaction(async (tx) => {
     const [req] = await tx
@@ -156,7 +186,7 @@ leaveRoute.put('/:id/approve', requireRole('admin', 'manager'), async (c) => {
         status: 'approved',
         approvedBy: user.id,
       })
-      .where(eq(leaveRequests.id, id))
+      .where(and(eq(leaveRequests.id, id), eq(leaveRequests.organizationId, tenantId)))
       .returning()
 
     if (!req) return null
@@ -181,6 +211,7 @@ leaveRoute.put('/:id/approve', requireRole('admin', 'manager'), async (c) => {
 leaveRoute.put('/:id/reject', requireRole('admin', 'manager'), async (c) => {
   const id = parseInt(c.req.param('id')!, 10)
   const user = c.get('user')
+  const tenantId = await requireTenantId(c)
 
   const updated = await db.transaction(async (tx) => {
     const [req] = await tx
@@ -189,7 +220,7 @@ leaveRoute.put('/:id/reject', requireRole('admin', 'manager'), async (c) => {
         status: 'rejected',
         approvedBy: user.id,
       })
-      .where(eq(leaveRequests.id, id))
+      .where(and(eq(leaveRequests.id, id), eq(leaveRequests.organizationId, tenantId)))
       .returning()
 
     if (!req) return null
@@ -214,7 +245,11 @@ leaveRoute.put('/:id/reject', requireRole('admin', 'manager'), async (c) => {
 leaveRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', leaveUpdateSchema), async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
+  const tenantId = await requireTenantId(c)
   const body = c.req.valid('json')
+  if (body.employeeId != null) {
+    await assertEmployeeInTenant(body.employeeId, tenantId)
+  }
   const values: Record<string, unknown> = {}
   if (body.employeeId !== undefined) values.employeeId = body.employeeId
   if (body.type !== undefined) values.type = body.type
@@ -223,7 +258,11 @@ leaveRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', leave
   if (body.reason !== undefined) values.reason = body.reason
   if (body.status !== undefined) values.status = body.status
 
-  const [updated] = await db.update(leaveRequests).set(values).where(eq(leaveRequests.id, id)).returning()
+  const [updated] = await db
+    .update(leaveRequests)
+    .set(values)
+    .where(and(eq(leaveRequests.id, id), eq(leaveRequests.organizationId, tenantId)))
+    .returning()
   if (!updated) throw new NotFoundError('Leave request not found')
 
   await logActivity(user.id, 'UPDATE', 'LEAVE_REQUEST', id)
@@ -235,7 +274,11 @@ leaveRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', leave
 leaveRoute.delete('/:id', requireRole('admin'), async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
-  const [deleted] = await db.delete(leaveRequests).where(eq(leaveRequests.id, id)).returning()
+  const tenantId = await requireTenantId(c)
+  const [deleted] = await db
+    .delete(leaveRequests)
+    .where(and(eq(leaveRequests.id, id), eq(leaveRequests.organizationId, tenantId)))
+    .returning()
   if (!deleted) throw new NotFoundError('Leave request not found')
 
   await logActivity(user.id, 'DELETE', 'LEAVE_REQUEST', id)

@@ -27,8 +27,11 @@ export async function getLeaveBalance(employeeId: number, tx: TxClient = db) {
   }
 }
 
-export async function getAllLeaveBalances(tx: TxClient = db) {
-  const allEmployees = await tx.select({ id: employees.id, name: employees.name }).from(employees)
+export async function getAllLeaveBalances(organizationId: number, tx: TxClient = db) {
+  const allEmployees = await tx
+    .select({ id: employees.id, name: employees.name })
+    .from(employees)
+    .where(eq(employees.organizationId, organizationId))
   if (allEmployees.length === 0) return []
 
   const leaveStats = await tx
@@ -38,7 +41,7 @@ export async function getAllLeaveBalances(tx: TxClient = db) {
       totalDays: sql<number>`SUM(DATE_PART('day', ${leaveRequests.endDate}::timestamp - ${leaveRequests.startDate}::timestamp) + 1)::integer`,
     })
     .from(leaveRequests)
-    .where(inArray(leaveRequests.status, ['approved', 'pending']))
+    .where(and(inArray(leaveRequests.status, ['approved', 'pending']), eq(leaveRequests.organizationId, organizationId)))
     .groupBy(leaveRequests.employeeId, leaveRequests.type)
 
   const usedMap = new Map<number, { annual: number; sick: number; personal: number; unpaid: number }>()

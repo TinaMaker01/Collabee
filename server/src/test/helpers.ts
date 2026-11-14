@@ -40,6 +40,7 @@ export async function createTestUser() {
     email: user.email,
     name: user.name,
     role: user.role,
+    organizationId: user.organizationId,
   })
   return { user, token }
 }

@@ -46,9 +46,13 @@ authRoute.post('/register', validateRegister, async (c) => {
       email: user.email,
       name: user.name,
       role: user.role,
+      organizationId: user.organizationId,
     })
     await logActivity(user.id, 'create', 'user', user.id, 'User self-registered')
-    return c.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role }, token }, 201)
+    return c.json(
+      { user: { id: user.id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId }, token },
+      201,
+    )
   } catch (err: unknown) {
     const pgErr = err as { constraint?: string; code?: string }
     if (pgErr.constraint === 'users_email_unique' || pgErr.code === '23505') {
@@ -69,8 +73,12 @@ authRoute.post('/login', validateLogin, async (c) => {
     email: user.email,
     name: user.name,
     role: user.role,
+    organizationId: user.organizationId,
   })
-  return c.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role }, token })
+  return c.json({
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, organizationId: user.organizationId },
+    token,
+  })
 })
 
 authRoute.post('/forgot-password', zValidator('json', forgotPasswordSchema), async (c) => {
@@ -121,6 +129,7 @@ authRoute.get('/me', protectRoute, async (c) => {
     email: fullUser.email,
     role: fullUser.role,
     avatarUrl: fullUser.avatarUrl,
+    organizationId: fullUser.organizationId,
   })
 })
 

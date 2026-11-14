@@ -15,6 +15,10 @@ export type UserPayload = {
   email: string
   name: string
   role: string
+  // Optional for backward compatibility: tokens issued before this field
+  // existed (up to 24h old) won't carry it, and verifyToken must still
+  // accept them. See middleware/auth.ts and services/tenant.ts.
+  organizationId?: number | null
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -55,6 +59,9 @@ export async function generateToken(user: UserPayload): Promise<string> {
       email: user.email,
       name: user.name,
       role: user.role,
+      // `org` is intentionally allowed to be null (org-less legacy users),
+      // but always present on freshly issued tokens from here on.
+      org: user.organizationId ?? null,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
     },
     JWT_SECRET!,
@@ -68,6 +75,7 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
       email?: string
       name?: string
       role?: string
+      org?: number | null
       exp?: number
     }
     if (!payload.sub || !payload.email || !payload.name || !payload.role) return null
@@ -76,6 +84,9 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
       email: payload.email,
       name: payload.name,
       role: payload.role,
+      // Tokens issued before this claim existed simply won't have `org`;
+      // treat that the same as an explicit null rather than rejecting them.
+      organizationId: payload.org ?? null,
     }
   } catch {
     return null

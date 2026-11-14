@@ -23,6 +23,12 @@ export async function protectRoute(c: Context, next: Next) {
   }
 
   c.set('user', user)
+  // Cheap, synchronous fast path: if the token already carries the org
+  // claim, seed tenantId now so route handlers can skip the DB-fallback
+  // lookup in services/tenant.ts#requireTenantId for freshly issued tokens.
+  if (user.organizationId != null) {
+    c.set('tenantId', user.organizationId)
+  }
   await next()
 }
 

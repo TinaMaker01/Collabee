@@ -110,7 +110,9 @@ export const employees = pgTable(
     id: serial('id').primaryKey(),
     name: varchar('name', { length: 255 }).notNull(),
     position: varchar('position', { length: 255 }),
-    email: varchar('email', { length: 255 }).unique().notNull(),
+    // Not globally unique: see migration 0008. Uniqueness is enforced
+    // per-organization via organizationEmailUniqueIdx below.
+    email: varchar('email', { length: 255 }).notNull(),
     phone: varchar('phone', { length: 50 }),
     avatarUrl: text('avatar_url'),
     departmentId: integer('department_id'),
@@ -137,6 +139,10 @@ export const employees = pgTable(
     organizationDepartmentIdx: index('employees_organization_department_idx').on(
       table.organizationId,
       table.departmentId,
+    ),
+    organizationEmailUniqueIdx: uniqueIndex('employees_organization_email_unique_idx').on(
+      table.organizationId,
+      table.email,
     ),
   }),
 )

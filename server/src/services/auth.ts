@@ -19,6 +19,11 @@ export type UserPayload = {
   // existed (up to 24h old) won't carry it, and verifyToken must still
   // accept them. See middleware/auth.ts and services/tenant.ts.
   organizationId?: number | null
+  // When the token was issued (unix seconds). Used by services/revocation.ts
+  // to reject tokens issued before a user's deletion/role-change/password-
+  // change, without needing a server-side session store. Optional for the
+  // same backward-compatibility reason as organizationId.
+  iat?: number
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -62,6 +67,7 @@ export async function generateToken(user: UserPayload): Promise<string> {
       // `org` is intentionally allowed to be null (org-less legacy users),
       // but always present on freshly issued tokens from here on.
       org: user.organizationId ?? null,
+      iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
     },
     JWT_SECRET!,
@@ -76,6 +82,7 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
       name?: string
       role?: string
       org?: number | null
+      iat?: number
       exp?: number
     }
     if (!payload.sub || !payload.email || !payload.name || !payload.role) return null
@@ -87,6 +94,7 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
       // Tokens issued before this claim existed simply won't have `org`;
       // treat that the same as an explicit null rather than rejecting them.
       organizationId: payload.org ?? null,
+      iat: payload.iat,
     }
   } catch {
     return null

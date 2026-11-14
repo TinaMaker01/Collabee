@@ -28,6 +28,7 @@ import {
   sendPasswordResetEmail,
 } from '../services/passwordReset.js'
 import { getDefaultOrganizationId } from '../services/organization.js'
+import { revokeUserTokensIssuedBefore } from '../services/revocation.js'
 
 const validateRegister = zValidator('json', registerSchema)
 const validateLogin = zValidator('json', loginSchema)
@@ -112,6 +113,9 @@ authRoute.post('/reset-password', zValidator('json', resetPasswordSchema), async
 
   const newHash = await hashPassword(newPassword)
   await db.update(users).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(users.id, targetUser.id))
+  // A password reset should invalidate any session an attacker may have
+  // established with the old (now-rotated) password.
+  revokeUserTokensIssuedBefore(targetUser.id)
   await logActivity(targetUser.id, 'update', 'password', targetUser.id, 'Password reset successfully')
 
   return c.json({ message: 'Password has been reset successfully' })
@@ -172,6 +176,11 @@ authRoute.put('/password', protectRoute, zValidator('json', passwordChangeSchema
 
   const newHash = await hashPassword(newPassword)
   await db.update(users).set({ passwordHash: newHash }).where(eq(users.id, user.id))
+  // Force re-authentication: the current token stays valid for the rest
+  // of this response, but any request after this one (including this
+  // same token reused later) is rejected, same as a fresh login would be
+  // required after rotating credentials.
+  revokeUserTokensIssuedBefore(user.id)
   await logActivity(user.id, 'update', 'password', user.id, 'Password changed')
   return c.json({ message: 'Password updated' })
 })

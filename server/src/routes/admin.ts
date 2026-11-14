@@ -11,6 +11,7 @@ import { userCreateSchema, userUpdateSchema } from '../shared/schemas.js'
 import { logger } from '../utils/logger.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { requireTenantId } from '../services/tenant.js'
+import { revokeUserTokensIssuedBefore } from '../services/revocation.js'
 
 const adminRoute = new Hono()
 
@@ -85,6 +86,10 @@ adminRoute.put('/users/:id/role', zValidator('json', roleSchema), async (c) => {
     })
   if (!updated) throw new NotFoundError('User not found')
 
+  // The role embedded in this user's existing token(s) is now stale;
+  // force re-authentication so a fresh token carries the new role.
+  revokeUserTokensIssuedBefore(id)
+
   await logActivity(currentUser.id, 'update', 'user', id, `Updated role of user ${updated.email} to ${role}`)
   return c.json(updated)
 })
@@ -133,6 +138,10 @@ adminRoute.delete('/users/:id', async (c) => {
     })
   if (!deleted) throw new NotFoundError('User not found')
 
+  // A deleted user's previously issued token(s) must stop working
+  // immediately, not after waiting out the remaining token lifetime.
+  revokeUserTokensIssuedBefore(id)
+
   await logActivity(currentUser.id, 'delete', 'user', id, `Deleted user ${deleted.email}`)
   return c.json({ message: 'User deleted' })
 })
@@ -178,6 +187,10 @@ adminRoute.put('/users/:id', zValidator('json', userUpdateSchema), async (c) => 
       role: users.role,
     })
   if (!updated) throw new NotFoundError('User not found')
+
+  // This update can change role or email, both embedded in existing
+  // tokens; force re-authentication so a fresh token reflects them.
+  revokeUserTokensIssuedBefore(id)
 
   await logActivity(currentUser.id, 'update', 'user', id, `Updated user profile for ${updated.email}`)
   return c.json(updated)

@@ -1,5 +1,6 @@
 import { Context, Next } from 'hono'
 import { verifyToken, UserPayload } from '../services/auth.js'
+import { isTokenRevoked } from '../services/revocation.js'
 import { UnauthorizedError, ForbiddenError } from './error.js'
 
 export async function protectRoute(c: Context, next: Next) {
@@ -20,6 +21,13 @@ export async function protectRoute(c: Context, next: Next) {
   const user = await verifyToken(token)
   if (!user) {
     throw new UnauthorizedError('Invalid or expired token')
+  }
+
+  // Closes a pentest finding: a deleted/role-changed/password-changed
+  // user's previously issued tokens must stop working immediately, not
+  // after waiting out the remaining token lifetime.
+  if (isTokenRevoked(user.id, user.iat)) {
+    throw new UnauthorizedError('Token revoked')
   }
 
   c.set('user', user)

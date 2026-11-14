@@ -25,8 +25,9 @@ export async function protectRoute(c: Context, next: Next) {
 
   // Closes a pentest finding: a deleted/role-changed/password-changed
   // user's previously issued tokens must stop working immediately, not
-  // after waiting out the remaining token lifetime.
-  if (isTokenRevoked(user.id, user.iat)) {
+  // after waiting out the remaining token lifetime. Also covers a plain
+  // single-session logout via this same token's jti.
+  if (isTokenRevoked(user.id, user.iat, user.jti)) {
     throw new UnauthorizedError('Token revoked')
   }
 

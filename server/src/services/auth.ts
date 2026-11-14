@@ -1,5 +1,6 @@
 import { sign, verify } from 'hono/jwt'
 import bcrypt from 'bcryptjs'
+import crypto from 'node:crypto'
 import { db } from '../db/index.js'
 import { users } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
@@ -49,6 +50,11 @@ export type UserPayload = {
   // change, without needing a server-side session store. Optional for the
   // same backward-compatibility reason as organizationId.
   iat?: number
+  // Unique per-token id (JWT ID). Lets services/revocation.ts invalidate
+  // one specific session (plain logout) without affecting any other
+  // session the same user holds elsewhere. Optional for the same
+  // backward-compatibility reason as organizationId/iat.
+  jti?: string
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -93,6 +99,7 @@ export async function generateToken(user: UserPayload): Promise<string> {
       // but always present on freshly issued tokens from here on.
       org: user.organizationId ?? null,
       iat: Math.floor(Date.now() / 1000),
+      jti: crypto.randomUUID(),
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
     },
     JWT_SECRET!,
@@ -108,6 +115,7 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
       role?: string
       org?: number | null
       iat?: number
+      jti?: string
       exp?: number
     }
     if (!payload.sub || !payload.email || !payload.name || !payload.role) return null
@@ -120,6 +128,7 @@ export async function verifyToken(token: string): Promise<UserPayload | null> {
       // treat that the same as an explicit null rather than rejecting them.
       organizationId: payload.org ?? null,
       iat: payload.iat,
+      jti: payload.jti,
     }
   } catch {
     return null

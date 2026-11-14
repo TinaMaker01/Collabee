@@ -28,7 +28,7 @@ import {
   sendPasswordResetEmail,
 } from '../services/passwordReset.js'
 import { getDefaultOrganizationId } from '../services/organization.js'
-import { revokeUserTokensIssuedBefore } from '../services/revocation.js'
+import { revokeUserTokensIssuedBefore, revokeToken } from '../services/revocation.js'
 
 const validateRegister = zValidator('json', registerSchema)
 const validateLogin = zValidator('json', loginSchema)
@@ -162,6 +162,15 @@ authRoute.put('/profile', protectRoute, validateProfile, async (c) => {
 })
 
 authRoute.post('/logout', protectRoute, async (c) => {
+  const user = c.get('user')
+  // Ends only this session, not every device/tab the user is logged in
+  // on elsewhere — a bulk per-user revocation here would be a much
+  // bigger behavior change than a routine logout should cause. A token
+  // issued before this field existed has no jti and so can't be
+  // individually revoked; it still expires normally.
+  if (user.jti) {
+    revokeToken(user.jti)
+  }
   return c.json({ message: 'Logged out successfully' })
 })
 

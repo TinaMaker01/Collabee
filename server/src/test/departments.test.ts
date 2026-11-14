@@ -48,10 +48,12 @@ describe('Departments routes & RBAC', () => {
     vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     vi.mocked(db.select).mockReturnValue({
-      from: vi.fn().mockResolvedValue([
-        { id: 1, name: 'Engineering', description: 'Dev team' },
-        { id: 2, name: 'HR', description: 'People ops' },
-      ]),
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([
+          { id: 1, name: 'Engineering', description: 'Dev team' },
+          { id: 2, name: 'HR', description: 'People ops' },
+        ]),
+      }),
     } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
     const res = await app.request('/api/departments', {

@@ -27,6 +27,7 @@ import {
   verifyAndConsumePasswordResetToken,
   sendPasswordResetEmail,
 } from '../services/passwordReset.js'
+import { getDefaultOrganizationId } from '../services/organization.js'
 
 const validateRegister = zValidator('json', registerSchema)
 const validateLogin = zValidator('json', loginSchema)
@@ -38,7 +39,8 @@ authRoute.post('/register', validateRegister, async (c) => {
   const { name, email, password } = c.req.valid('json')
 
   try {
-    const user = await createUser(name, email, password)
+    const organizationId = await getDefaultOrganizationId()
+    const user = await createUser(name, email, password, organizationId)
     const token = await generateToken({
       id: user.id,
       email: user.email,

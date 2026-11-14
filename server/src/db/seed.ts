@@ -1,6 +1,7 @@
 import { db } from './index.js'
 import { users, departments, employees, attendance, leaveRequests, tasks, notifications } from './schema.js'
 import { hashPassword } from '../services/auth.js'
+import { getDefaultOrganizationId } from '../services/organization.js'
 import { logger } from '../utils/logger.js'
 
 export async function seed() {
@@ -12,25 +13,26 @@ export async function seed() {
 
   logger.info('Seeding data...')
 
+  const organizationId = await getDefaultOrganizationId()
   const passwordHash = await hashPassword('password123')
 
   const [admin, manager, user] = await db
     .insert(users)
     .values([
-      { name: 'Admin', email: 'admin@collabee.com', passwordHash, role: 'admin' },
-      { name: 'Manager', email: 'manager@collabee.com', passwordHash, role: 'manager' },
-      { name: 'Regular User', email: 'user@collabee.com', passwordHash, role: 'user' },
+      { name: 'Admin', email: 'admin@collabee.com', passwordHash, role: 'admin', organizationId },
+      { name: 'Manager', email: 'manager@collabee.com', passwordHash, role: 'manager', organizationId },
+      { name: 'Regular User', email: 'user@collabee.com', passwordHash, role: 'user', organizationId },
     ])
     .returning()
 
   const deptData = await db
     .insert(departments)
     .values([
-      { name: 'Engineering', description: 'Software development and infrastructure' },
-      { name: 'Human Resources', description: 'People operations and culture' },
-      { name: 'Sales', description: 'Revenue and customer acquisition' },
-      { name: 'Marketing', description: 'Brand and communications' },
-      { name: 'Finance', description: 'Financial planning and accounting' },
+      { name: 'Engineering', description: 'Software development and infrastructure', organizationId },
+      { name: 'Human Resources', description: 'People operations and culture', organizationId },
+      { name: 'Sales', description: 'Revenue and customer acquisition', organizationId },
+      { name: 'Marketing', description: 'Brand and communications', organizationId },
+      { name: 'Finance', description: 'Financial planning and accounting', organizationId },
     ])
     .returning()
 

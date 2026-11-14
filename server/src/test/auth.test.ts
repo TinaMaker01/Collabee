@@ -38,6 +38,10 @@ vi.mock('../utils/activityLogger.js', () => ({
   logActivity: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('../services/organization.js', () => ({
+  getDefaultOrganizationId: vi.fn().mockResolvedValue(1),
+}))
+
 import { createUser, authenticateUser, generateToken, getUserById, verifyToken } from '../services/auth.js'
 import { db } from '../db/index.js'
 

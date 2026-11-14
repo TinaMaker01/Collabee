@@ -1,16 +1,24 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { eq, count } from 'drizzle-orm'
+import { eq, and, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { employees } from '../db/schema.js'
+import { employees, departments } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
 import { employeeSchema, employeeUpdateSchema } from '../shared/schemas.js'
-import { NotFoundError } from '../middleware/error.js'
+import { NotFoundError, ValidationError } from '../middleware/error.js'
 import { withCache, invalidateCache } from '../utils/cache.js'
 import { parseCsv } from '../utils/csv.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { requireTenantId } from '../services/tenant.js'
 import { z } from 'zod'
+
+async function assertDepartmentInTenant(departmentId: number, tenantId: number) {
+  const [dept] = await db
+    .select({ id: departments.id })
+    .from(departments)
+    .where(and(eq(departments.id, departmentId), eq(departments.organizationId, tenantId)))
+  if (!dept) throw new ValidationError('departmentId does not belong to your organization')
+}
 
 const employeesRoute = new Hono()
 
@@ -18,6 +26,7 @@ employeesRoute.use('*', protectRoute)
 
 employeesRoute.get('/', async (c) => {
   const user = c.get('user')
+  const tenantId = await requireTenantId(c)
   const page = c.req.query('page')
   const limit = c.req.query('limit')
 
@@ -26,11 +35,19 @@ employeesRoute.get('/', async (c) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit || '20', 10) || 20))
     const offset = (pageNum - 1) * limitNum
 
-    const [totalRes] = await db.select({ value: count() }).from(employees)
+    const [totalRes] = await db
+      .select({ value: count() })
+      .from(employees)
+      .where(eq(employees.organizationId, tenantId))
     const total = Number(totalRes?.value || 0)
     const totalPages = Math.ceil(total / limitNum) || 1
 
-    const rawData = await db.select().from(employees).limit(limitNum).offset(offset)
+    const rawData = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.organizationId, tenantId))
+      .limit(limitNum)
+      .offset(offset)
     const data =
       user.role === 'user'
         ? rawData.map((emp) => ({
@@ -64,7 +81,7 @@ employeesRoute.get('/', async (c) => {
     return c.json(data)
   }
 
-  const data = await withCache(c, () => db.select().from(employees))
+  const data = await withCache(c, () => db.select().from(employees).where(eq(employees.organizationId, tenantId)))
   if (user.role === 'user') {
     return c.json(
       data.map((emp) => ({
@@ -84,7 +101,11 @@ employeesRoute.get('/', async (c) => {
 employeesRoute.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid ID')
-  const [employee] = await db.select().from(employees).where(eq(employees.id, id))
+  const tenantId = await requireTenantId(c)
+  const [employee] = await db
+    .select()
+    .from(employees)
+    .where(and(eq(employees.id, id), eq(employees.organizationId, tenantId)))
   if (!employee) throw new NotFoundError('Employee not found')
 
   const user = c.get('user')
@@ -98,6 +119,9 @@ employeesRoute.get('/:id', async (c) => {
 employeesRoute.post('/', requireRole('admin', 'manager'), zValidator('json', employeeSchema), async (c) => {
   const body = c.req.valid('json')
   const organizationId = await requireTenantId(c)
+  if (body.departmentId != null) {
+    await assertDepartmentInTenant(body.departmentId, organizationId)
+  }
   const [newEmployee] = await db
     .insert(employees)
     .values({
@@ -172,7 +196,11 @@ employeesRoute.post(
 
 employeesRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', employeeUpdateSchema), async (c) => {
   const id = parseInt(c.req.param('id')!, 10)
+  const tenantId = await requireTenantId(c)
   const body = c.req.valid('json')
+  if (body.departmentId != null) {
+    await assertDepartmentInTenant(body.departmentId, tenantId)
+  }
   const values: Record<string, unknown> = {}
   if (body.name !== undefined) values.name = body.name
   if (body.position !== undefined) values.position = body.position
@@ -183,7 +211,11 @@ employeesRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', e
   if (body.hireDate !== undefined) values.hireDate = new Date(body.hireDate)
   if (body.salary !== undefined) values.salary = body.salary
   if (body.status !== undefined) values.status = body.status
-  const [updated] = await db.update(employees).set(values).where(eq(employees.id, id)).returning()
+  const [updated] = await db
+    .update(employees)
+    .set(values)
+    .where(and(eq(employees.id, id), eq(employees.organizationId, tenantId)))
+    .returning()
   if (!updated) throw new NotFoundError('Employee not found')
   invalidateCache('/api/employees')
   invalidateCache('/api/leave-balance')
@@ -193,7 +225,11 @@ employeesRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', e
 
 employeesRoute.delete('/:id', requireRole('admin'), async (c) => {
   const id = parseInt(c.req.param('id')!, 10)
-  const [deleted] = await db.delete(employees).where(eq(employees.id, id)).returning()
+  const tenantId = await requireTenantId(c)
+  const [deleted] = await db
+    .delete(employees)
+    .where(and(eq(employees.id, id), eq(employees.organizationId, tenantId)))
+    .returning()
   if (!deleted) throw new NotFoundError('Employee not found')
   invalidateCache('/api/employees')
   invalidateCache('/api/leave-balance')

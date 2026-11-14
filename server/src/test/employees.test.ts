@@ -114,15 +114,19 @@ describe('Employees routes', () => {
   it('GET /api/employees with page and limit should return paginated list and headers', async () => {
     vi.mocked(db.select)
       .mockReturnValueOnce({
-        from: vi.fn().mockResolvedValue([{ value: 50 }]),
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ value: 50 }]),
+        }),
       } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            offset: vi.fn().mockResolvedValue([
-              { id: 1, name: 'Alice' },
-              { id: 2, name: 'Bob' },
-            ]),
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              offset: vi.fn().mockResolvedValue([
+                { id: 1, name: 'Alice' },
+                { id: 2, name: 'Bob' },
+              ]),
+            }),
           }),
         }),
       } as any) // eslint-disable-line @typescript-eslint/no-explicit-any

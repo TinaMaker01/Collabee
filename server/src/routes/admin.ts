@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
-import { eq, sql, count } from 'drizzle-orm'
+import { eq, and, sql, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { users, employees, tasks, leaveRequests, notifications } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
@@ -18,16 +18,20 @@ adminRoute.use('*', protectRoute)
 adminRoute.use('*', requireRole('admin'))
 
 adminRoute.get('/stats', async (c) => {
-  const [userCount] = await db.select({ value: count() }).from(users)
-  const [employeeCount] = await db.select({ value: count() }).from(employees)
+  const tenantId = await requireTenantId(c)
+  const [userCount] = await db.select({ value: count() }).from(users).where(eq(users.organizationId, tenantId))
+  const [employeeCount] = await db
+    .select({ value: count() })
+    .from(employees)
+    .where(eq(employees.organizationId, tenantId))
   const [activeTasks] = await db
     .select({ value: count() })
     .from(tasks)
-    .where(sql`${tasks.status} != 'done'`)
+    .where(and(eq(tasks.organizationId, tenantId), sql`${tasks.status} != 'done'`))
   const [pendingLeaves] = await db
     .select({ value: count() })
     .from(leaveRequests)
-    .where(eq(leaveRequests.status, 'pending'))
+    .where(and(eq(leaveRequests.organizationId, tenantId), eq(leaveRequests.status, 'pending')))
 
   return c.json({
     users: Number(userCount.value),
@@ -38,6 +42,7 @@ adminRoute.get('/stats', async (c) => {
 })
 
 adminRoute.get('/users', async (c) => {
+  const tenantId = await requireTenantId(c)
   const allUsers = await db
     .select({
       id: users.id,
@@ -49,6 +54,7 @@ adminRoute.get('/users', async (c) => {
       updatedAt: users.updatedAt,
     })
     .from(users)
+    .where(eq(users.organizationId, tenantId))
   return c.json(allUsers)
 })
 
@@ -58,6 +64,7 @@ const roleSchema = z.object({
 
 adminRoute.put('/users/:id/role', zValidator('json', roleSchema), async (c) => {
   const currentUser = c.get('user')
+  const tenantId = await requireTenantId(c)
   const id = parseInt(c.req.param('id')!, 10)
   const { role } = c.req.valid('json')
 
@@ -66,12 +73,16 @@ adminRoute.put('/users/:id/role', zValidator('json', roleSchema), async (c) => {
     throw new ConflictError('Cannot demote your own admin account')
   }
 
-  const [updated] = await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, id)).returning({
-    id: users.id,
-    name: users.name,
-    email: users.email,
-    role: users.role,
-  })
+  const [updated] = await db
+    .update(users)
+    .set({ role, updatedAt: new Date() })
+    .where(and(eq(users.id, id), eq(users.organizationId, tenantId)))
+    .returning({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+    })
   if (!updated) throw new NotFoundError('User not found')
 
   await logActivity(currentUser.id, 'update', 'user', id, `Updated role of user ${updated.email} to ${role}`)
@@ -80,34 +91,46 @@ adminRoute.put('/users/:id/role', zValidator('json', roleSchema), async (c) => {
 
 adminRoute.delete('/users/:id', async (c) => {
   const currentUser = c.get('user')
+  const tenantId = await requireTenantId(c)
   const id = parseInt(c.req.param('id')!, 10)
 
   if (id === currentUser.id) {
     throw new ConflictError('Cannot delete your own account')
   }
 
-  const [targetUser] = await db.select().from(users).where(eq(users.id, id))
+  const [targetUser] = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.id, id), eq(users.organizationId, tenantId)))
   if (!targetUser) throw new NotFoundError('User not found')
 
   if (targetUser.role === 'admin') {
-    const [adminCount] = await db.select({ value: count() }).from(users).where(eq(users.role, 'admin'))
+    const [adminCount] = await db
+      .select({ value: count() })
+      .from(users)
+      .where(and(eq(users.role, 'admin'), eq(users.organizationId, tenantId)))
     if (Number(adminCount.value) <= 1) {
       throw new ConflictError('Cannot delete the last remaining admin account')
     }
   }
 
-  // Clean up notifications and reassign foreign keys to avoid DB constraint failures
+  // Clean up notifications and reassign foreign keys to avoid DB constraint failures.
+  // Scoped by id alone is safe: id already uniquely identifies a row within this
+  // tenant (targetUser was confirmed to belong to tenantId above).
   await db.delete(notifications).where(eq(notifications.userId, id))
   await db.update(tasks).set({ createdBy: currentUser.id }).where(eq(tasks.createdBy, id))
   await db.update(leaveRequests).set({ approvedBy: currentUser.id }).where(eq(leaveRequests.approvedBy, id))
 
   logger.info({ userId: id }, 'Cleaned references for user before deletion')
 
-  const [deleted] = await db.delete(users).where(eq(users.id, id)).returning({
-    id: users.id,
-    name: users.name,
-    email: users.email,
-  })
+  const [deleted] = await db
+    .delete(users)
+    .where(and(eq(users.id, id), eq(users.organizationId, tenantId)))
+    .returning({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    })
   if (!deleted) throw new NotFoundError('User not found')
 
   await logActivity(currentUser.id, 'delete', 'user', id, `Deleted user ${deleted.email}`)
@@ -141,12 +164,13 @@ adminRoute.post('/users', zValidator('json', userCreateSchema), async (c) => {
 
 adminRoute.put('/users/:id', zValidator('json', userUpdateSchema), async (c) => {
   const currentUser = c.get('user')
+  const tenantId = await requireTenantId(c)
   const id = parseInt(c.req.param('id')!, 10)
   const body = c.req.valid('json')
   const [updated] = await db
     .update(users)
     .set({ ...body, updatedAt: new Date() })
-    .where(eq(users.id, id))
+    .where(and(eq(users.id, id), eq(users.organizationId, tenantId)))
     .returning({
       id: users.id,
       name: users.name,

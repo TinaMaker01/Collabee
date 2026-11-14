@@ -163,12 +163,16 @@ describe('End-to-End Critical Flows (T7)', () => {
     // 2. Query paginated list
     vi.mocked(db.select)
       .mockReturnValueOnce({
-        from: vi.fn().mockResolvedValue([{ value: 1 }]),
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ value: 1 }]),
+        }),
       } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            offset: vi.fn().mockResolvedValue([newEmp]),
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              offset: vi.fn().mockResolvedValue([newEmp]),
+            }),
           }),
         }),
       } as any) // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -64,6 +64,13 @@
       "when": 1781105706232,
       "tag": "0008_employee_email_unique_per_org",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781105706233,
+      "tag": "0009_composite_tenant_fk_integrity",
+      "breakpoints": true
     }
   ]
 }

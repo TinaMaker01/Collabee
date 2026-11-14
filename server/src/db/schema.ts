@@ -9,6 +9,7 @@ import {
   foreignKey,
   index,
   uniqueIndex,
+  unique,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -38,21 +39,29 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
  * Roles: user, manager, admin.
  * Each user can create tasks and receive notifications.
  */
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }).unique().notNull(),
-  passwordHash: text('password_hash').notNull(),
-  role: varchar('role', { length: 20 }).notNull().default('user'),
-  avatarUrl: text('avatar_url'),
-  organizationId: integer('organization_id')
-    .notNull()
-    .references(() => organizations.id, { onDelete: 'restrict' }),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-})
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    email: varchar('email', { length: 255 }).unique().notNull(),
+    passwordHash: text('password_hash').notNull(),
+    role: varchar('role', { length: 20 }).notNull().default('user'),
+    avatarUrl: text('avatar_url'),
+    organizationId: integer('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    // Composite unique anchor so other tables' composite FKs can target
+    // (id, organization_id) — see migration 0009.
+    idOrganizationUnique: unique('users_id_organization_id_unique').on(table.id, table.organizationId),
+  }),
+)
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   organization: one(organizations, {
@@ -88,6 +97,13 @@ export const departments = pgTable(
       table.organizationId,
       table.name,
     ),
+    idOrganizationUnique: unique('departments_id_organization_id_unique').on(table.id, table.organizationId),
+    // departments.managerId had no FK at all before migration 0009.
+    managerOrgFk: foreignKey({
+      columns: [table.managerId, table.organizationId],
+      foreignColumns: [users.id, users.organizationId],
+      name: 'departments_manager_org_fk',
+    }),
   }),
 )
 
@@ -144,6 +160,12 @@ export const employees = pgTable(
       table.organizationId,
       table.email,
     ),
+    idOrganizationUnique: unique('employees_id_organization_id_unique').on(table.id, table.organizationId),
+    departmentOrgFk: foreignKey({
+      columns: [table.departmentId, table.organizationId],
+      foreignColumns: [departments.id, departments.organizationId],
+      name: 'employees_department_org_fk',
+    }),
   }),
 )
 
@@ -187,6 +209,11 @@ export const attendance = pgTable(
     dateIdx: index('attendance_date_idx').on(table.date),
     employeeDateIdx: uniqueIndex('attendance_emp_date_unique_idx').on(table.employeeId, table.date),
     organizationDateIdx: index('attendance_organization_date_idx').on(table.organizationId, table.date),
+    employeeOrgFk: foreignKey({
+      columns: [table.employeeId, table.organizationId],
+      foreignColumns: [employees.id, employees.organizationId],
+      name: 'attendance_employee_org_fk',
+    }),
   }),
 )
 
@@ -234,6 +261,16 @@ export const leaveRequests = pgTable(
     employeeStatusIdx: index('leave_requests_employee_status_idx').on(table.employeeId, table.status),
     organizationStatusIdx: index('leave_requests_organization_status_idx').on(table.organizationId, table.status),
     approvedByIdx: index('leave_requests_approved_by_idx').on(table.approvedBy),
+    employeeOrgFk: foreignKey({
+      columns: [table.employeeId, table.organizationId],
+      foreignColumns: [employees.id, employees.organizationId],
+      name: 'leave_requests_employee_org_fk',
+    }),
+    approverOrgFk: foreignKey({
+      columns: [table.approvedBy, table.organizationId],
+      foreignColumns: [users.id, users.organizationId],
+      name: 'leave_requests_approver_org_fk',
+    }),
   }),
 )
 
@@ -292,6 +329,21 @@ export const tasks = pgTable(
     createdByIdx: index('tasks_created_by_idx').on(table.createdBy),
     organizationStatusIdx: index('tasks_organization_status_idx').on(table.organizationId, table.status),
     organizationDueDateIdx: index('tasks_organization_due_date_idx').on(table.organizationId, table.dueDate),
+    assigneeOrgFk: foreignKey({
+      columns: [table.assignedTo, table.organizationId],
+      foreignColumns: [employees.id, employees.organizationId],
+      name: 'tasks_assignee_org_fk',
+    }),
+    creatorOrgFk: foreignKey({
+      columns: [table.createdBy, table.organizationId],
+      foreignColumns: [users.id, users.organizationId],
+      name: 'tasks_creator_org_fk',
+    }),
+    departmentOrgFk: foreignKey({
+      columns: [table.departmentId, table.organizationId],
+      foreignColumns: [departments.id, departments.organizationId],
+      name: 'tasks_department_org_fk',
+    }),
   }),
 )
 
@@ -340,6 +392,11 @@ export const notifications = pgTable(
       table.userId,
       table.read,
     ),
+    userOrgFk: foreignKey({
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [users.id, users.organizationId],
+      name: 'notifications_user_org_fk',
+    }),
   }),
 )
 
@@ -379,6 +436,11 @@ export const activityLogs = pgTable(
       table.organizationId,
       table.createdAt,
     ),
+    userOrgFk: foreignKey({
+      columns: [table.userId, table.organizationId],
+      foreignColumns: [users.id, users.organizationId],
+      name: 'activity_logs_user_org_fk',
+    }),
   }),
 )
 
@@ -415,6 +477,11 @@ export const documents = pgTable(
       table.organizationId,
       table.employeeId,
     ),
+    employeeOrgFk: foreignKey({
+      columns: [table.employeeId, table.organizationId],
+      foreignColumns: [employees.id, employees.organizationId],
+      name: 'documents_employee_org_fk',
+    }),
   }),
 )
 
@@ -455,6 +522,14 @@ export const onboardingTasks = pgTable(
       table.organizationId,
       table.employeeId,
     ),
+    // Must match employeeFk's ON DELETE CASCADE above, or an employee
+    // delete would be blocked by this constraint (default NO ACTION)
+    // before the single-column FK's cascade could run.
+    employeeOrgFk: foreignKey({
+      columns: [table.employeeId, table.organizationId],
+      foreignColumns: [employees.id, employees.organizationId],
+      name: 'onboarding_tasks_employee_org_fk',
+    }).onDelete('cascade'),
   }),
 )
 

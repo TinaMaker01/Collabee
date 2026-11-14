@@ -2,14 +2,30 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { eq, and, or, type SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { tasks, employees, notifications, users } from '../db/schema.js'
+import { tasks, employees, departments, notifications, users } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
-import { NotFoundError, ForbiddenError } from '../middleware/error.js'
+import { NotFoundError, ForbiddenError, ValidationError } from '../middleware/error.js'
 import { withCache, invalidateCache } from '../utils/cache.js'
 import { taskSchema, taskUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { emitNotification } from '../services/notificationEvents.js'
 import { requireTenantId } from '../services/tenant.js'
+
+async function assertAssigneeInTenant(employeeId: number, tenantId: number) {
+  const [emp] = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(and(eq(employees.id, employeeId), eq(employees.organizationId, tenantId)))
+  if (!emp) throw new ValidationError('assignedTo does not belong to your organization')
+}
+
+async function assertDepartmentInTenant(departmentId: number, tenantId: number) {
+  const [dept] = await db
+    .select({ id: departments.id })
+    .from(departments)
+    .where(and(eq(departments.id, departmentId), eq(departments.organizationId, tenantId)))
+  if (!dept) throw new ValidationError('departmentId does not belong to your organization')
+}
 
 async function notifyTaskAssignee(employeeId: number, taskTitle: string) {
   try {
@@ -41,11 +57,15 @@ tasksRoute.use('*', protectRoute)
 
 tasksRoute.get('/', async (c) => {
   const user = c.get('user')
+  const tenantId = await requireTenantId(c)
   const assignedTo = c.req.query('assignedTo')
   const departmentId = c.req.query('departmentId')
 
   if (user.role === 'user') {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp) return c.json([])
 
     // Enforce scoping: user can only see their own tasks or their department's tasks
@@ -53,16 +73,19 @@ tasksRoute.get('/', async (c) => {
       ? or(eq(tasks.assignedTo, emp.id), eq(tasks.departmentId, emp.departmentId))
       : eq(tasks.assignedTo, emp.id)
 
-    const userTasks = await db.select().from(tasks).where(scopingCondition)
+    const userTasks = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.organizationId, tenantId), scopingCondition))
     return c.json(userTasks)
   }
 
   // Managers and Admins can query with optional filters
-  const conditions: SQL[] = []
+  const conditions: SQL[] = [eq(tasks.organizationId, tenantId)]
   if (assignedTo) conditions.push(eq(tasks.assignedTo, parseInt(assignedTo, 10)))
   if (departmentId) conditions.push(eq(tasks.departmentId, parseInt(departmentId, 10)))
 
-  if (conditions.length > 0) {
+  if (assignedTo || departmentId) {
     const data = await db
       .select()
       .from(tasks)
@@ -70,7 +93,7 @@ tasksRoute.get('/', async (c) => {
     return c.json(data)
   }
 
-  const data = await withCache(c, () => db.select().from(tasks))
+  const data = await withCache(c, () => db.select().from(tasks).where(eq(tasks.organizationId, tenantId)))
   return c.json(data)
 })
 
@@ -78,12 +101,19 @@ tasksRoute.get('/:id', async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid ID')
+  const tenantId = await requireTenantId(c)
 
-  const [task] = await db.select().from(tasks).where(eq(tasks.id, id))
+  const [task] = await db
+    .select()
+    .from(tasks)
+    .where(and(eq(tasks.id, id), eq(tasks.organizationId, tenantId)))
   if (!task) throw new NotFoundError('Task not found')
 
   if (user.role === 'user') {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp) throw new ForbiddenError('Forbidden')
     const hasAccess = task.assignedTo === emp.id || (emp.departmentId && task.departmentId === emp.departmentId)
     if (!hasAccess) throw new ForbiddenError('Forbidden')
@@ -96,6 +126,12 @@ tasksRoute.post('/', requireRole('admin', 'manager'), zValidator('json', taskSch
   const user = c.get('user')
   const body = c.req.valid('json')
   const organizationId = await requireTenantId(c)
+  if (body.assignedTo != null) {
+    await assertAssigneeInTenant(body.assignedTo, organizationId)
+  }
+  if (body.departmentId != null) {
+    await assertDepartmentInTenant(body.departmentId, organizationId)
+  }
   const [newTask] = await db
     .insert(tasks)
     .values({
@@ -125,8 +161,12 @@ tasksRoute.put('/:id', zValidator('json', taskUpdateSchema), async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid ID')
+  const tenantId = await requireTenantId(c)
 
-  const [task] = await db.select().from(tasks).where(eq(tasks.id, id))
+  const [task] = await db
+    .select()
+    .from(tasks)
+    .where(and(eq(tasks.id, id), eq(tasks.organizationId, tenantId)))
   if (!task) throw new NotFoundError('Task not found')
 
   const body = c.req.valid('json')
@@ -134,7 +174,10 @@ tasksRoute.put('/:id', zValidator('json', taskUpdateSchema), async (c) => {
 
   // If regular user, check if they are the assignee and only allow status update
   if (!isManagerOrAdmin) {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp || task.assignedTo !== emp.id) {
       throw new ForbiddenError('Forbidden')
     }
@@ -145,11 +188,18 @@ tasksRoute.put('/:id', zValidator('json', taskUpdateSchema), async (c) => {
     const [updated] = await db
       .update(tasks)
       .set({ status: body.status, updatedAt: new Date() })
-      .where(eq(tasks.id, id))
+      .where(and(eq(tasks.id, id), eq(tasks.organizationId, tenantId)))
       .returning()
     invalidateCache('/api/tasks')
     await logActivity(user.id, 'update', 'task', id, `Updated task status to "${body.status}"`)
     return c.json(updated)
+  }
+
+  if (body.assignedTo != null) {
+    await assertAssigneeInTenant(body.assignedTo, tenantId)
+  }
+  if (body.departmentId != null) {
+    await assertDepartmentInTenant(body.departmentId, tenantId)
   }
 
   const values: Record<string, unknown> = { updatedAt: new Date() }
@@ -161,7 +211,11 @@ tasksRoute.put('/:id', zValidator('json', taskUpdateSchema), async (c) => {
   if (body.priority !== undefined) values.priority = body.priority
   if (body.dueDate !== undefined) values.dueDate = new Date(body.dueDate)
 
-  const [updated] = await db.update(tasks).set(values).where(eq(tasks.id, id)).returning()
+  const [updated] = await db
+    .update(tasks)
+    .set(values)
+    .where(and(eq(tasks.id, id), eq(tasks.organizationId, tenantId)))
+    .returning()
   if (!updated) throw new NotFoundError('Task not found')
 
   invalidateCache('/api/tasks')
@@ -178,8 +232,12 @@ tasksRoute.delete('/:id', requireRole('admin'), async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid ID')
+  const tenantId = await requireTenantId(c)
 
-  const [deleted] = await db.delete(tasks).where(eq(tasks.id, id)).returning()
+  const [deleted] = await db
+    .delete(tasks)
+    .where(and(eq(tasks.id, id), eq(tasks.organizationId, tenantId)))
+    .returning()
   if (!deleted) throw new NotFoundError('Task not found')
 
   invalidateCache('/api/tasks')

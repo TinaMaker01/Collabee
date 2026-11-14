@@ -179,15 +179,41 @@ documentsRoute.post('/upload', requireRole('admin', 'manager'), async (c) => {
 })
 
 documentsRoute.get('/file/:filename', async (c) => {
+  const user = c.get('user')
   const rawParam = c.req.param('filename')
   // Path traversal prevention: keep only the base file name
   const safeName = path.basename(rawParam)
   const tenantId = await requireTenantId(c)
 
-  // Look in the caller's own tenant folder first (every file uploaded since
-  // per-tenant folders were introduced lives there). Fall back to the flat
-  // legacy uploads/ root for files uploaded before this change — those
-  // predate multi-tenancy and aren't attributable to any single tenant.
+  // Authorization is anchored to a documents row owned by the caller's
+  // tenant, not to where the file happens to sit on disk. This closes a
+  // real cross-tenant leak found during pentest: the previous version
+  // fell back to serving any file found in the flat legacy uploads/ root
+  // with no ownership check at all, so any authenticated user of any
+  // organization could read any pre-migration file by filename alone.
+  const expectedUrl = `/api/documents/file/${safeName}`
+  const [doc] = await db
+    .select()
+    .from(documents)
+    .where(and(eq(documents.url, expectedUrl), eq(documents.organizationId, tenantId)))
+  if (!doc) throw new NotFoundError('File not found')
+
+  if (user.role === 'user') {
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
+    if (!emp || doc.employeeId !== emp.id) {
+      throw new NotFoundError('File not found')
+    }
+  }
+
+  // The documents row confirms ownership; now locate the actual bytes.
+  // Files uploaded since per-tenant folders were introduced live under
+  // uploads/<tenantId>/. Pre-migration files still sit in the flat legacy
+  // uploads/ root — reading from there is safe now that the row lookup
+  // above already proved this exact filename belongs to the caller's
+  // tenant, so it's no longer a bypass of tenant isolation.
   const tenantPath = path.join(path.resolve(process.cwd(), 'uploads', String(tenantId)), safeName)
   const legacyPath = path.join(path.resolve(process.cwd(), 'uploads'), safeName)
   const filePath = fs.existsSync(tenantPath) ? tenantPath : legacyPath

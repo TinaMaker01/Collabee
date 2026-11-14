@@ -84,12 +84,35 @@ describe('Documents routes, upload & security', () => {
     expect(data.url).toMatch(/^\/api\/documents\/file\/[a-f0-9-]+.pdf$/)
     expect(data.filename).toBe('test-contract.pdf')
 
-    // Test downloading the uploaded file
+    // Downloading now requires a matching documents row owned by the
+    // caller's tenant (closes the cross-tenant file-disclosure gap found
+    // during pentest: authorization is anchored to this row, not to
+    // whatever happens to exist on disk).
+    vi.mocked(db.select).mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ id: 1, employeeId: 2, url: data.url, organizationId: 1 }]),
+      }),
+    } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+
     const downloadRes = await app.request(data.url, {
       headers: { Authorization: 'Bearer valid-token' },
     })
     expect(downloadRes.status).toBe(200)
     expect(downloadRes.headers.get('content-type')).toBe('application/pdf')
+  })
+
+  it('GET /api/documents/file/:filename should 404 when no documents row references it (closes cross-tenant/legacy-fallback leak)', async () => {
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@collabee.com', name: 'Admin', role: 'admin', organizationId: 1 })
+    vi.mocked(db.select).mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
+      }),
+    } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    const res = await app.request('/api/documents/file/some-random-filename.pdf', {
+      headers: { Authorization: 'Bearer valid-token' },
+    })
+    expect(res.status).toBe(404)
   })
 
   it('POST /api/documents/upload should reject unsupported file extensions', async () => {

@@ -3,7 +3,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { documents, employees } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
@@ -12,6 +12,14 @@ import { documentSchema, documentUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { withCache, invalidateCache } from '../utils/cache.js'
 import { requireTenantId } from '../services/tenant.js'
+
+async function assertEmployeeInTenant(employeeId: number, tenantId: number) {
+  const [emp] = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(and(eq(employees.id, employeeId), eq(employees.organizationId, tenantId)))
+  if (!emp) throw new ValidationError('employeeId does not belong to your organization')
+}
 
 const MIME_TYPES: Record<string, string> = {
   '.pdf': 'application/pdf',
@@ -32,12 +40,21 @@ documentsRoute.use('*', protectRoute)
 
 documentsRoute.get('/', async (c) => {
   const user = c.get('user')
+  const tenantId = await requireTenantId(c)
   const employeeId = c.req.query('employeeId')
 
   if (user.role === 'user') {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp) return c.json([])
-    const data = await withCache(c, () => db.select().from(documents).where(eq(documents.employeeId, emp.id)))
+    const data = await withCache(c, () =>
+      db
+        .select()
+        .from(documents)
+        .where(and(eq(documents.employeeId, emp.id), eq(documents.organizationId, tenantId))),
+    )
     return c.json(data)
   }
 
@@ -45,10 +62,10 @@ documentsRoute.get('/', async (c) => {
     const data = await db
       .select()
       .from(documents)
-      .where(eq(documents.employeeId, parseInt(employeeId, 10)))
+      .where(and(eq(documents.employeeId, parseInt(employeeId, 10)), eq(documents.organizationId, tenantId)))
     return c.json(data)
   }
-  const data = await withCache(c, () => db.select().from(documents))
+  const data = await withCache(c, () => db.select().from(documents).where(eq(documents.organizationId, tenantId)))
   return c.json(data)
 })
 
@@ -56,11 +73,18 @@ documentsRoute.get('/:id', async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid ID')
-  const [doc] = await db.select().from(documents).where(eq(documents.id, id))
+  const tenantId = await requireTenantId(c)
+  const [doc] = await db
+    .select()
+    .from(documents)
+    .where(and(eq(documents.id, id), eq(documents.organizationId, tenantId)))
   if (!doc) throw new NotFoundError('Document not found')
 
   if (user.role === 'user') {
-    const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
+    const [emp] = await db
+      .select()
+      .from(employees)
+      .where(and(eq(employees.email, user.email), eq(employees.organizationId, tenantId)))
     if (!emp || doc.employeeId !== emp.id) {
       throw new NotFoundError('Document not found')
     }
@@ -73,6 +97,7 @@ documentsRoute.post('/', requireRole('admin', 'manager'), zValidator('json', doc
   const user = c.get('user')
   const body = c.req.valid('json')
   const organizationId = await requireTenantId(c)
+  await assertEmployeeInTenant(body.employeeId, organizationId)
   const [newDoc] = await db.insert(documents).values({ ...body, organizationId }).returning()
   invalidateCache('/api/documents')
   await logActivity(user.id, 'CREATE', 'DOCUMENT', newDoc.id, { title: newDoc.title })
@@ -83,8 +108,16 @@ documentsRoute.put('/:id', requireRole('admin', 'manager'), zValidator('json', d
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid ID')
+  const tenantId = await requireTenantId(c)
   const body = c.req.valid('json')
-  const [updated] = await db.update(documents).set(body).where(eq(documents.id, id)).returning()
+  if (body.employeeId != null) {
+    await assertEmployeeInTenant(body.employeeId, tenantId)
+  }
+  const [updated] = await db
+    .update(documents)
+    .set(body)
+    .where(and(eq(documents.id, id), eq(documents.organizationId, tenantId)))
+    .returning()
   if (!updated) throw new NotFoundError('Document not found')
   invalidateCache('/api/documents')
   await logActivity(user.id, 'UPDATE', 'DOCUMENT', id, { title: updated.title })
@@ -95,8 +128,12 @@ documentsRoute.delete('/:id', requireRole('admin'), async (c) => {
   const user = c.get('user')
   const id = parseInt(c.req.param('id')!, 10)
   if (isNaN(id)) throw new NotFoundError('Invalid ID')
+  const tenantId = await requireTenantId(c)
 
-  const [deleted] = await db.delete(documents).where(eq(documents.id, id)).returning()
+  const [deleted] = await db
+    .delete(documents)
+    .where(and(eq(documents.id, id), eq(documents.organizationId, tenantId)))
+    .returning()
   if (!deleted) throw new NotFoundError('Document not found')
 
   invalidateCache('/api/documents')
@@ -123,7 +160,10 @@ documentsRoute.post('/upload', requireRole('admin', 'manager'), async (c) => {
     throw new ValidationError('Unsupported file extension. Allowed: PDF, images, Office docs, text/csv.')
   }
 
-  const uploadDir = path.resolve(process.cwd(), 'uploads')
+  const tenantId = await requireTenantId(c)
+  // Each tenant gets its own upload subfolder so one organization can never
+  // read another's files, even if it guessed a filename (see /file/:filename).
+  const uploadDir = path.resolve(process.cwd(), 'uploads', String(tenantId))
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true })
   }
@@ -142,8 +182,15 @@ documentsRoute.get('/file/:filename', async (c) => {
   const rawParam = c.req.param('filename')
   // Path traversal prevention: keep only the base file name
   const safeName = path.basename(rawParam)
-  const uploadDir = path.resolve(process.cwd(), 'uploads')
-  const filePath = path.join(uploadDir, safeName)
+  const tenantId = await requireTenantId(c)
+
+  // Look in the caller's own tenant folder first (every file uploaded since
+  // per-tenant folders were introduced lives there). Fall back to the flat
+  // legacy uploads/ root for files uploaded before this change — those
+  // predate multi-tenancy and aren't attributable to any single tenant.
+  const tenantPath = path.join(path.resolve(process.cwd(), 'uploads', String(tenantId)), safeName)
+  const legacyPath = path.join(path.resolve(process.cwd(), 'uploads'), safeName)
+  const filePath = fs.existsSync(tenantPath) ? tenantPath : legacyPath
 
   if (!fs.existsSync(filePath)) {
     throw new NotFoundError('File not found')

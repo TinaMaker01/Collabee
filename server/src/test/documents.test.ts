@@ -47,11 +47,13 @@ describe('Documents routes, upload & security', () => {
   it('GET /api/documents should return documents list', async () => {
     vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@collabee.com', name: 'Admin', role: 'admin', organizationId: 1 })
     vi.mocked(db.select).mockReturnValueOnce({
-      from: vi
-        .fn()
-        .mockResolvedValue([
-          { id: 1, employeeId: 2, title: 'Contract', url: 'https://example.com/contract.pdf', type: 'contract' },
-        ]),
+      from: vi.fn().mockReturnValue({
+        where: vi
+          .fn()
+          .mockResolvedValue([
+            { id: 1, employeeId: 2, title: 'Contract', url: 'https://example.com/contract.pdf', type: 'contract' },
+          ]),
+      }),
     } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
     const res = await app.request('/api/documents', {

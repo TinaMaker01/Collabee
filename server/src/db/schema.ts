@@ -70,7 +70,7 @@ export const departments = pgTable(
   'departments',
   {
     id: serial('id').primaryKey(),
-    name: varchar('name', { length: 255 }).notNull().unique(),
+    name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
     managerId: integer('manager_id'),
     organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
@@ -78,6 +78,12 @@ export const departments = pgTable(
   },
   (table) => ({
     nameIdx: index('departments_name_idx').on(table.name),
+    // Replaces the old global-unique name constraint: department names only
+    // need to be unique within an organization (see migration 0006).
+    organizationNameUniqueIdx: uniqueIndex('departments_organization_name_unique_idx').on(
+      table.organizationId,
+      table.name,
+    ),
   }),
 )
 
@@ -104,6 +110,7 @@ export const employees = pgTable(
     phone: varchar('phone', { length: 50 }),
     avatarUrl: text('avatar_url'),
     departmentId: integer('department_id'),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
     hireDate: timestamp('hire_date'),
     salary: integer('salary'),
     status: varchar('status', { length: 50 }).default('active'),
@@ -120,6 +127,11 @@ export const employees = pgTable(
     departmentIdIdx: index('employees_department_id_idx').on(table.departmentId),
     statusIdx: index('employees_status_idx').on(table.status),
     departmentStatusIdx: index('employees_department_status_idx').on(table.departmentId, table.status),
+    organizationStatusIdx: index('employees_organization_status_idx').on(table.organizationId, table.status),
+    organizationDepartmentIdx: index('employees_organization_department_idx').on(
+      table.organizationId,
+      table.departmentId,
+    ),
   }),
 )
 
@@ -144,6 +156,7 @@ export const attendance = pgTable(
   {
     id: serial('id').primaryKey(),
     employeeId: integer('employee_id').notNull(),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
     date: timestamp('date').notNull(),
     checkIn: timestamp('check_in'),
     checkOut: timestamp('check_out'),
@@ -159,6 +172,7 @@ export const attendance = pgTable(
     employeeIdIdx: index('attendance_employee_id_idx').on(table.employeeId),
     dateIdx: index('attendance_date_idx').on(table.date),
     employeeDateIdx: uniqueIndex('attendance_emp_date_unique_idx').on(table.employeeId, table.date),
+    organizationDateIdx: index('attendance_organization_date_idx').on(table.organizationId, table.date),
   }),
 )
 
@@ -178,6 +192,7 @@ export const leaveRequests = pgTable(
   {
     id: serial('id').primaryKey(),
     employeeId: integer('employee_id').notNull(),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
     type: varchar('type', { length: 50 }).notNull(),
     startDate: timestamp('start_date').notNull(),
     endDate: timestamp('end_date').notNull(),
@@ -201,6 +216,8 @@ export const leaveRequests = pgTable(
     employeeIdIdx: index('leave_requests_employee_id_idx').on(table.employeeId),
     statusIdx: index('leave_requests_status_idx').on(table.status),
     employeeStatusIdx: index('leave_requests_employee_status_idx').on(table.employeeId, table.status),
+    organizationStatusIdx: index('leave_requests_organization_status_idx').on(table.organizationId, table.status),
+    approvedByIdx: index('leave_requests_approved_by_idx').on(table.approvedBy),
   }),
 )
 
@@ -228,6 +245,7 @@ export const tasks = pgTable(
     assignedTo: integer('assigned_to'),
     createdBy: integer('created_by').notNull(),
     departmentId: integer('department_id'),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
     status: varchar('status', { length: 50 }).notNull().default('todo'),
     priority: varchar('priority', { length: 50 }).notNull().default('medium'),
     dueDate: timestamp('due_date'),
@@ -253,6 +271,9 @@ export const tasks = pgTable(
     statusIdx: index('tasks_status_idx').on(table.status),
     departmentIdIdx: index('tasks_department_id_idx').on(table.departmentId),
     dueDateIdx: index('tasks_due_date_idx').on(table.dueDate),
+    createdByIdx: index('tasks_created_by_idx').on(table.createdBy),
+    organizationStatusIdx: index('tasks_organization_status_idx').on(table.organizationId, table.status),
+    organizationDueDateIdx: index('tasks_organization_due_date_idx').on(table.organizationId, table.dueDate),
   }),
 )
 
@@ -280,6 +301,7 @@ export const notifications = pgTable(
   {
     id: serial('id').primaryKey(),
     userId: integer('user_id').notNull(),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
     title: varchar('title', { length: 255 }).notNull(),
     message: text('message').notNull(),
     type: varchar('type', { length: 50 }).notNull().default('info'),
@@ -293,6 +315,11 @@ export const notifications = pgTable(
     }),
     userIdIdx: index('notifications_user_id_idx').on(table.userId),
     readIdx: index('notifications_read_idx').on(table.read),
+    organizationUserReadIdx: index('notifications_organization_user_read_idx').on(
+      table.organizationId,
+      table.userId,
+      table.read,
+    ),
   }),
 )
 
@@ -311,6 +338,7 @@ export const activityLogs = pgTable(
   {
     id: serial('id').primaryKey(),
     userId: integer('user_id').notNull(),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
     action: varchar('action', { length: 50 }).notNull(),
     entityType: varchar('entity_type', { length: 50 }).notNull(),
     entityId: integer('entity_id'),
@@ -325,6 +353,10 @@ export const activityLogs = pgTable(
     userIdIdx: index('activity_logs_user_id_idx').on(table.userId),
     actionIdx: index('activity_logs_action_idx').on(table.action),
     entityTypeIdx: index('activity_logs_entity_type_idx').on(table.entityType),
+    organizationCreatedAtIdx: index('activity_logs_organization_created_at_idx').on(
+      table.organizationId,
+      table.createdAt,
+    ),
   }),
 )
 
@@ -343,6 +375,7 @@ export const documents = pgTable(
   {
     id: serial('id').primaryKey(),
     employeeId: integer('employee_id').notNull(),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
     title: varchar('title', { length: 255 }).notNull(),
     url: text('url').notNull(),
     type: varchar('type', { length: 50 }),
@@ -354,6 +387,10 @@ export const documents = pgTable(
       foreignColumns: [employees.id],
     }),
     employeeIdIdx: index('documents_employee_id_idx').on(table.employeeId),
+    organizationEmployeeIdx: index('documents_organization_employee_idx').on(
+      table.organizationId,
+      table.employeeId,
+    ),
   }),
 )
 
@@ -372,6 +409,7 @@ export const onboardingTasks = pgTable(
   {
     id: serial('id').primaryKey(),
     employeeId: integer('employee_id').notNull(),
+    organizationId: integer('organization_id').references(() => organizations.id, { onDelete: 'restrict' }),
     title: varchar('title', { length: 255 }).notNull(),
     description: text('description'),
     category: varchar('category', { length: 50 }).notNull().default('general'),
@@ -387,6 +425,10 @@ export const onboardingTasks = pgTable(
     }).onDelete('cascade'),
     employeeIdIdx: index('onboarding_tasks_employee_id_idx').on(table.employeeId),
     completedIdx: index('onboarding_tasks_completed_idx').on(table.completed),
+    organizationEmployeeIdx: index('onboarding_tasks_organization_employee_idx').on(
+      table.organizationId,
+      table.employeeId,
+    ),
   }),
 )
 

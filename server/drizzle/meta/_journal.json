@@ -43,6 +43,13 @@
       "when": 1781105706229,
       "tag": "0005_fix_org_sequence_and_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781105706230,
+      "tag": "0006_tenant_scope_core_tables",
+      "breakpoints": true
     }
   ]
 }

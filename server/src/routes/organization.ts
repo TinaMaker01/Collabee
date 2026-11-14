@@ -6,30 +6,21 @@ import { organizations, departments, users, employees } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
 import { organizationUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
+import { requireTenantId } from '../services/tenant.js'
+import { NotFoundError, ConflictError } from '../middleware/error.js'
 
 const organizationRoute = new Hono()
 
 organizationRoute.use('*', protectRoute)
 
 organizationRoute.get('/', async (c) => {
-  const orgList = await db.select().from(organizations).limit(1)
-  let org = orgList[0]
+  const tenantId = await requireTenantId(c)
+  const [org] = await db.select().from(organizations).where(eq(organizations.id, tenantId))
+  if (!org) throw new NotFoundError('Organization not found')
 
-  if (!org) {
-    const [created] = await db
-      .insert(organizations)
-      .values({
-        name: 'Collabee HQ',
-        slug: 'collabee-hq',
-        domain: 'collabee.com',
-      })
-      .returning()
-    org = created
-  }
-
-  const [deptCount] = await db.select({ value: count() }).from(departments)
-  const [userCount] = await db.select({ value: count() }).from(users)
-  const [empCount] = await db.select({ value: count() }).from(employees)
+  const [deptCount] = await db.select({ value: count() }).from(departments).where(eq(departments.organizationId, tenantId))
+  const [userCount] = await db.select({ value: count() }).from(users).where(eq(users.organizationId, tenantId))
+  const [empCount] = await db.select({ value: count() }).from(employees).where(eq(employees.organizationId, tenantId))
 
   return c.json({
     organization: org,
@@ -43,21 +34,14 @@ organizationRoute.get('/', async (c) => {
 
 organizationRoute.patch('/', requireRole('admin'), zValidator('json', organizationUpdateSchema), async (c) => {
   const body = c.req.valid('json')
-  const orgList = await db.select().from(organizations).limit(1)
-  let org = orgList[0]
+  const tenantId = await requireTenantId(c)
 
-  if (!org) {
-    const [created] = await db
-      .insert(organizations)
-      .values({
-        name: body.name || 'Collabee HQ',
-        slug: body.slug || 'collabee-hq',
-        domain: body.domain || 'collabee.com',
-      })
-      .returning()
-    org = created
-  } else {
-    const [updated] = await db
+  const [existing] = await db.select().from(organizations).where(eq(organizations.id, tenantId))
+  if (!existing) throw new NotFoundError('Organization not found')
+
+  let updated
+  try {
+    ;[updated] = await db
       .update(organizations)
       .set({
         ...(body.name ? { name: body.name } : {}),
@@ -65,15 +49,20 @@ organizationRoute.patch('/', requireRole('admin'), zValidator('json', organizati
         ...(body.domain !== undefined ? { domain: body.domain } : {}),
         updatedAt: new Date(),
       })
-      .where(eq(organizations.id, org.id))
+      .where(eq(organizations.id, tenantId))
       .returning()
-    org = updated
+  } catch (err: unknown) {
+    const pgErr = err as { constraint?: string; code?: string }
+    if (pgErr.constraint === 'organizations_slug_unique' || pgErr.code === '23505') {
+      throw new ConflictError('Slug already in use')
+    }
+    throw err
   }
 
   const currentUser = c.get('user')
-  await logActivity(currentUser.id, 'UPDATE_ORGANIZATION', 'organization', org.id, { changes: body })
+  await logActivity(currentUser.id, 'UPDATE_ORGANIZATION', 'organization', updated.id, { changes: body })
 
-  return c.json({ organization: org })
+  return c.json({ organization: updated })
 })
 
 export default organizationRoute

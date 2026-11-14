@@ -52,23 +52,29 @@ describe('Organization & Multi-tenant routes', () => {
     }
 
     vi.mocked(db.select)
-      // 1. organizations select
+      // 1. organizations select by tenant id
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([mockOrg]),
+          where: vi.fn().mockResolvedValue([mockOrg]),
         }),
       } as unknown as ReturnType<typeof db.select>)
-      // 2. departments count
+      // 2. departments count, scoped by organizationId
       .mockReturnValueOnce({
-        from: vi.fn().mockResolvedValue([{ value: 5 }]),
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ value: 5 }]),
+        }),
       } as unknown as ReturnType<typeof db.select>)
-      // 3. users count
+      // 3. users count, scoped by organizationId
       .mockReturnValueOnce({
-        from: vi.fn().mockResolvedValue([{ value: 12 }]),
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ value: 12 }]),
+        }),
       } as unknown as ReturnType<typeof db.select>)
-      // 4. employees count
+      // 4. employees count, scoped by organizationId
       .mockReturnValueOnce({
-        from: vi.fn().mockResolvedValue([{ value: 25 }]),
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ value: 25 }]),
+        }),
       } as unknown as ReturnType<typeof db.select>)
 
     const res = await app.request('/api/organization', {
@@ -101,7 +107,7 @@ describe('Organization & Multi-tenant routes', () => {
 
     vi.mocked(db.select).mockReturnValueOnce({
       from: vi.fn().mockReturnValue({
-        limit: vi.fn().mockResolvedValue([existingOrg]),
+        where: vi.fn().mockResolvedValue([existingOrg]),
       }),
     } as unknown as ReturnType<typeof db.select>)
 

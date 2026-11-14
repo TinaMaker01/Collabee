@@ -69,7 +69,7 @@ describe('Leave routes & IDOR protection', () => {
   })
 
   it('GET /api/leave for user role should only query own employee leave requests', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@example.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@example.com', name: 'User', role: 'user', organizationId: 1 })
 
     // Mock employees query returning employee id 5
     vi.mocked(db.select).mockReturnValueOnce({
@@ -95,7 +95,7 @@ describe('Leave routes & IDOR protection', () => {
   })
 
   it('POST /api/leave should reject if standard user attempts to submit for another employee ID', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@example.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@example.com', name: 'User', role: 'user', organizationId: 1 })
 
     // Mock employee match for user having ID 5
     vi.mocked(db.select).mockReturnValueOnce({
@@ -122,7 +122,7 @@ describe('Leave routes & IDOR protection', () => {
   })
 
   it('POST /api/leave should succeed if standard user submits for their own employee ID', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@example.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@example.com', name: 'User', role: 'user', organizationId: 1 })
 
     // Mock employee match for user having ID 5
     vi.mocked(db.select).mockReturnValueOnce({

@@ -9,6 +9,7 @@ import { NotFoundError } from '../middleware/error.js'
 import { withCache, invalidateCache } from '../utils/cache.js'
 import { parseCsv } from '../utils/csv.js'
 import { logActivity } from '../utils/activityLogger.js'
+import { requireTenantId } from '../services/tenant.js'
 import { z } from 'zod'
 
 const employeesRoute = new Hono()
@@ -96,6 +97,7 @@ employeesRoute.get('/:id', async (c) => {
 
 employeesRoute.post('/', requireRole('admin', 'manager'), zValidator('json', employeeSchema), async (c) => {
   const body = c.req.valid('json')
+  const organizationId = await requireTenantId(c)
   const [newEmployee] = await db
     .insert(employees)
     .values({
@@ -105,6 +107,7 @@ employeesRoute.post('/', requireRole('admin', 'manager'), zValidator('json', emp
       phone: body.phone,
       avatarUrl: body.avatarUrl,
       departmentId: body.departmentId,
+      organizationId,
       hireDate: body.hireDate ? new Date(body.hireDate) : undefined,
       salary: body.salary,
       status: body.status,
@@ -148,11 +151,13 @@ employeesRoute.post(
     }
 
     if (valid.length > 0) {
+      const organizationId = await requireTenantId(c)
       await db.insert(employees).values(
         valid.map((emp) => ({
           name: emp.name,
           email: emp.email,
           position: emp.position || null,
+          organizationId,
           isDummy: false,
         })),
       )

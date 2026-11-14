@@ -181,7 +181,7 @@ describe('Auth routes', () => {
       updatedAt: null,
     }
     vi.mocked(getUserById).mockResolvedValue(mockUser)
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'john@example.com', name: 'John', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'john@example.com', name: 'John', role: 'user', organizationId: 1 })
 
     const res = await app.request('/api/auth/me', {
       headers: { Authorization: 'Bearer valid-token' },

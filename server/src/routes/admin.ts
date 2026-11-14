@@ -10,6 +10,7 @@ import { hashPassword } from '../services/auth.js'
 import { userCreateSchema, userUpdateSchema } from '../shared/schemas.js'
 import { logger } from '../utils/logger.js'
 import { logActivity } from '../utils/activityLogger.js'
+import { requireTenantId } from '../services/tenant.js'
 
 const adminRoute = new Hono()
 
@@ -117,6 +118,7 @@ adminRoute.post('/users', zValidator('json', userCreateSchema), async (c) => {
   const currentUser = c.get('user')
   const body = c.req.valid('json')
   const passwordHash = await hashPassword(body.password)
+  const organizationId = await requireTenantId(c)
   const [user] = await db
     .insert(users)
     .values({
@@ -124,6 +126,7 @@ adminRoute.post('/users', zValidator('json', userCreateSchema), async (c) => {
       email: body.email,
       passwordHash,
       role: body.role ?? 'user',
+      organizationId,
     })
     .returning({
       id: users.id,

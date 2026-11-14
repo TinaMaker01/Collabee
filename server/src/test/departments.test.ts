@@ -45,7 +45,7 @@ describe('Departments routes & RBAC', () => {
   })
 
   it('GET /api/departments should return list of departments', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockResolvedValue([
@@ -63,7 +63,7 @@ describe('Departments routes & RBAC', () => {
   })
 
   it('POST /api/departments as regular user should return 403 Forbidden', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@test.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     const res = await app.request('/api/departments', {
       method: 'POST',
@@ -74,7 +74,7 @@ describe('Departments routes & RBAC', () => {
   })
 
   it('POST /api/departments as admin should return 201 Created', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin', organizationId: 1 })
 
     vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({

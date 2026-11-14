@@ -8,6 +8,7 @@ import { NotFoundError } from '../middleware/error.js'
 import { withCache, invalidateCache } from '../utils/cache.js'
 import { departmentSchema, departmentUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
+import { requireTenantId } from '../services/tenant.js'
 
 const departmentsRoute = new Hono()
 
@@ -29,7 +30,8 @@ departmentsRoute.get('/:id', async (c) => {
 departmentsRoute.post('/', requireRole('admin', 'manager'), zValidator('json', departmentSchema), async (c) => {
   const user = c.get('user')
   const body = c.req.valid('json')
-  const [newDepartment] = await db.insert(departments).values(body).returning()
+  const organizationId = await requireTenantId(c)
+  const [newDepartment] = await db.insert(departments).values({ ...body, organizationId }).returning()
   invalidateCache('/api/departments')
   await logActivity(user.id, 'create', 'department', newDepartment.id, `Created department "${newDepartment.name}"`)
   return c.json(newDepartment, 201)

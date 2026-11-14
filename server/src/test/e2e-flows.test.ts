@@ -86,6 +86,7 @@ describe('End-to-End Critical Flows (T7)', () => {
       email: mockUser.email,
       name: mockUser.name,
       role: mockUser.role,
+      organizationId: 1,
     })
 
     // 1. Login
@@ -117,6 +118,7 @@ describe('End-to-End Critical Flows (T7)', () => {
       email: 'admin@collabee.local',
       name: 'Admin',
       role: 'admin',
+      organizationId: 1,
     })
 
     const newEmp = {
@@ -189,6 +191,7 @@ describe('End-to-End Critical Flows (T7)', () => {
       email: 'alice@collabee.local',
       name: 'Alice',
       role: 'user',
+      organizationId: 1,
     })
 
     // Mock finding employee then checking existing attendance

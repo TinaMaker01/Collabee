@@ -45,7 +45,7 @@ describe('Documents routes, upload & security', () => {
   })
 
   it('GET /api/documents should return documents list', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@collabee.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@collabee.com', name: 'Admin', role: 'admin', organizationId: 1 })
     vi.mocked(db.select).mockReturnValueOnce({
       from: vi
         .fn()
@@ -65,7 +65,7 @@ describe('Documents routes, upload & security', () => {
   })
 
   it('POST /api/documents/upload should upload a valid file and return URL', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@collabee.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@collabee.com', name: 'Admin', role: 'admin', organizationId: 1 })
 
     const formData = new FormData()
     const file = new File(['dummy pdf content'], 'test-contract.pdf', { type: 'application/pdf' })
@@ -91,7 +91,7 @@ describe('Documents routes, upload & security', () => {
   })
 
   it('POST /api/documents/upload should reject unsupported file extensions', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@collabee.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@collabee.com', name: 'Admin', role: 'admin', organizationId: 1 })
 
     const formData = new FormData()
     const file = new File(['malicious'], 'script.exe', { type: 'application/x-msdownload' })

@@ -12,6 +12,7 @@ import { logActivity } from '../utils/activityLogger.js'
 import { getLeaveBalance } from '../services/leave.js'
 import { logger } from '../utils/logger.js'
 import { emitNotification } from '../services/notificationEvents.js'
+import { requireTenantId } from '../services/tenant.js'
 
 async function notifyEmployee(tx: TxClient, employeeId: number, title: string, message: string, type: string) {
   const [emp] = await tx.select().from(employees).where(eq(employees.id, employeeId))
@@ -24,7 +25,10 @@ async function notifyEmployee(tx: TxClient, employeeId: number, title: string, m
     logger.warn({ employeeEmail: emp.email }, 'No user found for employee email')
     return
   }
-  const [inserted] = await tx.insert(notifications).values({ userId: targetUser.id, title, message, type }).returning()
+  const [inserted] = await tx
+    .insert(notifications)
+    .values({ userId: targetUser.id, organizationId: targetUser.organizationId, title, message, type })
+    .returning()
   if (inserted) {
     emitNotification(targetUser.id, inserted)
   }
@@ -76,6 +80,7 @@ leaveRoute.get('/:id', async (c) => {
 leaveRoute.post('/', zValidator('json', leaveRequestSchema), async (c) => {
   const user = c.get('user')
   const body = c.req.valid('json')
+  const organizationId = await requireTenantId(c)
 
   if (user.role === 'user') {
     const [emp] = await db.select().from(employees).where(eq(employees.email, user.email))
@@ -121,6 +126,7 @@ leaveRoute.post('/', zValidator('json', leaveRequestSchema), async (c) => {
       .insert(leaveRequests)
       .values({
         employeeId: body.employeeId,
+        organizationId,
         type: body.type,
         startDate: new Date(body.startDate),
         endDate: new Date(body.endDate),

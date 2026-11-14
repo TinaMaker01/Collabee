@@ -30,7 +30,7 @@ describe('Employees routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin', organizationId: 1 })
     app = new Hono()
     app.onError((err, c) => {
       if (err instanceof AppError) {

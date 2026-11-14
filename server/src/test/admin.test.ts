@@ -41,7 +41,7 @@ describe('Admin routes & Safeguards', () => {
   })
 
   it('GET /api/admin/stats should return aggregated counters', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin', organizationId: 1 })
 
     // Mock count selects for users, employees, tasks, leave
     vi.mocked(db.select).mockReturnValue({
@@ -61,7 +61,7 @@ describe('Admin routes & Safeguards', () => {
   })
 
   it('DELETE /api/admin/users/:id should prevent self-deletion with 409 Conflict', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin', organizationId: 1 })
 
     const res = await app.request('/api/admin/users/1', {
       method: 'DELETE',
@@ -73,7 +73,7 @@ describe('Admin routes & Safeguards', () => {
   })
 
   it('PUT /api/admin/users/:id/role should prevent admin from demoting themselves with 409', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin', organizationId: 1 })
 
     const res = await app.request('/api/admin/users/1/role', {
       method: 'PUT',

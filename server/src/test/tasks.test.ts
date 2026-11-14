@@ -45,7 +45,7 @@ describe('Tasks routes & BOLA authorization', () => {
   })
 
   it('GET /api/tasks as user should only return tasks scoped to that employee', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'emp@test.com', name: 'Emp', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'emp@test.com', name: 'Emp', role: 'user', organizationId: 1 })
 
     // Mock finding employee
     vi.mocked(db.select).mockReturnValueOnce({
@@ -71,7 +71,7 @@ describe('Tasks routes & BOLA authorization', () => {
   })
 
   it('GET /api/tasks/:id as user should reject access if task belongs to another employee', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'emp@test.com', name: 'Emp', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'emp@test.com', name: 'Emp', role: 'user', organizationId: 1 })
 
     // Mock task query
     vi.mocked(db.select).mockReturnValueOnce({
@@ -94,7 +94,7 @@ describe('Tasks routes & BOLA authorization', () => {
   })
 
   it('POST /api/tasks as admin should succeed and return 201', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin', organizationId: 1 })
 
     vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({

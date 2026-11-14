@@ -11,6 +11,7 @@ import { NotFoundError, ValidationError } from '../middleware/error.js'
 import { documentSchema, documentUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { withCache, invalidateCache } from '../utils/cache.js'
+import { requireTenantId } from '../services/tenant.js'
 
 const MIME_TYPES: Record<string, string> = {
   '.pdf': 'application/pdf',
@@ -71,7 +72,8 @@ documentsRoute.get('/:id', async (c) => {
 documentsRoute.post('/', requireRole('admin', 'manager'), zValidator('json', documentSchema), async (c) => {
   const user = c.get('user')
   const body = c.req.valid('json')
-  const [newDoc] = await db.insert(documents).values(body).returning()
+  const organizationId = await requireTenantId(c)
+  const [newDoc] = await db.insert(documents).values({ ...body, organizationId }).returning()
   invalidateCache('/api/documents')
   await logActivity(user.id, 'CREATE', 'DOCUMENT', newDoc.id, { title: newDoc.title })
   return c.json(newDoc, 201)

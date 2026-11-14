@@ -33,7 +33,7 @@ describe('Dashboard aggregated stats route', () => {
   })
 
   it('GET /api/dashboard/stats should return aggregated KPIs', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'emp@test.com', name: 'Emp', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'emp@test.com', name: 'Emp', role: 'user', organizationId: 1 })
 
     // Users count
     vi.mocked(db.select).mockReturnValueOnce({

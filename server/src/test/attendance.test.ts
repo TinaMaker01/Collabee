@@ -45,7 +45,7 @@ describe('Attendance routes & Check-in / Check-out', () => {
   })
 
   it('POST /api/attendance/check-in should record employee clock-in', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 5, email: 'emp@test.com', name: 'Emp', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 5, email: 'emp@test.com', name: 'Emp', role: 'user', organizationId: 1 })
 
     // Mock finding employee
     vi.mocked(db.select).mockReturnValueOnce({
@@ -81,7 +81,7 @@ describe('Attendance routes & Check-in / Check-out', () => {
   })
 
   it('POST /api/attendance/check-out should update checkout time', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 5, email: 'emp@test.com', name: 'Emp', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 5, email: 'emp@test.com', name: 'Emp', role: 'user', organizationId: 1 })
 
     // Mock finding employee
     vi.mocked(db.select).mockReturnValueOnce({

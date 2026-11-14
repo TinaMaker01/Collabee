@@ -9,6 +9,7 @@ import { withCache, invalidateCache } from '../utils/cache.js'
 import { taskSchema, taskUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
 import { emitNotification } from '../services/notificationEvents.js'
+import { requireTenantId } from '../services/tenant.js'
 
 async function notifyTaskAssignee(employeeId: number, taskTitle: string) {
   try {
@@ -20,6 +21,7 @@ async function notifyTaskAssignee(employeeId: number, taskTitle: string) {
       .insert(notifications)
       .values({
         userId: targetUser.id,
+        organizationId: targetUser.organizationId,
         title: 'New Task Assigned',
         message: `You have been assigned to task: "${taskTitle}"`,
         type: 'info',
@@ -93,6 +95,7 @@ tasksRoute.get('/:id', async (c) => {
 tasksRoute.post('/', requireRole('admin', 'manager'), zValidator('json', taskSchema), async (c) => {
   const user = c.get('user')
   const body = c.req.valid('json')
+  const organizationId = await requireTenantId(c)
   const [newTask] = await db
     .insert(tasks)
     .values({
@@ -101,6 +104,7 @@ tasksRoute.post('/', requireRole('admin', 'manager'), zValidator('json', taskSch
       assignedTo: body.assignedTo,
       createdBy: user.id,
       departmentId: body.departmentId,
+      organizationId,
       status: body.status,
       priority: body.priority,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,

@@ -8,6 +8,7 @@ import { NotFoundError } from '../middleware/error.js'
 import { withCache, invalidateCache } from '../utils/cache.js'
 import { attendanceSchema, attendanceUpdateSchema } from '../shared/schemas.js'
 import { logActivity } from '../utils/activityLogger.js'
+import { requireTenantId } from '../services/tenant.js'
 
 const attendanceRoute = new Hono()
 
@@ -63,10 +64,12 @@ attendanceRoute.post('/check-in', async (c) => {
     return c.json(existing)
   }
 
+  const organizationId = await requireTenantId(c)
   const [newRecord] = await db
     .insert(attendance)
     .values({
       employeeId: emp.id,
+      organizationId,
       date: today,
       checkIn: now,
       status: 'present',
@@ -93,10 +96,12 @@ attendanceRoute.post('/check-out', async (c) => {
     .where(and(eq(attendance.employeeId, emp.id), eq(attendance.date, today)))
 
   if (!existing) {
+    const organizationId = await requireTenantId(c)
     const [newRecord] = await db
       .insert(attendance)
       .values({
         employeeId: emp.id,
+        organizationId,
         date: today,
         checkOut: now,
         status: 'present',
@@ -134,10 +139,12 @@ attendanceRoute.get('/:id', async (c) => {
 attendanceRoute.post('/', requireRole('admin', 'manager'), zValidator('json', attendanceSchema), async (c) => {
   const user = c.get('user')
   const body = c.req.valid('json')
+  const organizationId = await requireTenantId(c)
   const [newRecord] = await db
     .insert(attendance)
     .values({
       employeeId: body.employeeId,
+      organizationId,
       date: new Date(body.date),
       checkIn: body.checkIn ? new Date(body.checkIn) : undefined,
       checkOut: body.checkOut ? new Date(body.checkOut) : undefined,

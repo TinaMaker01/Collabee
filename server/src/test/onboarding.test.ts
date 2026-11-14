@@ -45,6 +45,7 @@ describe('Onboarding Routes', () => {
       email: 'employee@collabee.local',
       name: 'John Doe',
       role: 'user',
+      organizationId: 1,
     })
 
     const mockEmp = { id: 10, email: 'employee@collabee.local', name: 'John Doe' }
@@ -88,6 +89,7 @@ describe('Onboarding Routes', () => {
       email: 'employee@collabee.local',
       name: 'John Doe',
       role: 'user',
+      organizationId: 1,
     })
 
     const existingTask = { id: 1, employeeId: 10, title: 'Compléter profil', completed: false }
@@ -155,6 +157,7 @@ describe('Onboarding Routes', () => {
       email: 'admin@collabee.local',
       name: 'Admin',
       role: 'admin',
+      organizationId: 1,
     })
 
     vi.mocked(db.select).mockReturnValue({
@@ -203,6 +206,7 @@ describe('Onboarding Routes', () => {
       email: 'admin@collabee.local',
       name: 'Admin',
       role: 'admin',
+      organizationId: 1,
     })
 
     vi.mocked(db.delete).mockReturnValue({

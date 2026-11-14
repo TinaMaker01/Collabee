@@ -35,7 +35,7 @@ describe('Notifications routes', () => {
   })
 
   it('GET /api/notifications should list notifications for current user', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     const mockNotifs = [{ id: 10, userId: 1, title: 'Task Alert', message: 'Assigned', type: 'info', read: false }]
 
@@ -60,7 +60,7 @@ describe('Notifications routes', () => {
   })
 
   it('PATCH /api/notifications/:id/read should mark notification as read', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     vi.mocked(db.update).mockReturnValue({
       set: vi.fn().mockReturnValue({
@@ -81,7 +81,7 @@ describe('Notifications routes', () => {
   })
 
   it('PATCH /api/notifications/read-all should mark all as read', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     vi.mocked(db.update).mockReturnValue({
       set: vi.fn().mockReturnValue({
@@ -98,7 +98,7 @@ describe('Notifications routes', () => {
   })
 
   it('DELETE /api/notifications/:id should delete notification', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     vi.mocked(db.delete).mockReturnValue({
       where: vi.fn().mockReturnValue({

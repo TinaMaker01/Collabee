@@ -39,7 +39,7 @@ describe('Organization & Multi-tenant routes', () => {
   })
 
   it('GET /api/organization returns organization workspace info and stats', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     const mockOrg = {
       id: 1,
@@ -84,7 +84,7 @@ describe('Organization & Multi-tenant routes', () => {
   })
 
   it('PATCH /api/organization as admin allows updating organization settings', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 1, email: 'admin@test.com', name: 'Admin', role: 'admin', organizationId: 1 })
 
     const existingOrg = {
       id: 1,
@@ -129,7 +129,7 @@ describe('Organization & Multi-tenant routes', () => {
   })
 
   it('PATCH /api/organization as regular user returns 403 Forbidden', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@test.com', name: 'User', role: 'user' })
+    vi.mocked(verifyToken).mockResolvedValue({ id: 2, email: 'user@test.com', name: 'User', role: 'user', organizationId: 1 })
 
     const res = await app.request('/api/organization', {
       method: 'PATCH',

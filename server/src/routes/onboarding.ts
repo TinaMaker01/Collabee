@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { eq, asc } from 'drizzle-orm'
+import { eq, asc, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { onboardingTasks, employees, users, departments, notifications } from '../db/schema.js'
 import { protectRoute, requireRole } from '../middleware/auth.js'
@@ -49,8 +49,13 @@ const DEFAULT_ONBOARDING_TASKS = [
 ]
 
 async function seedDefaultTasksForEmployee(employeeId: number) {
+  // Correlated subquery rather than requiring the caller to already have
+  // the employee's organizationId at hand (this is called from a GET
+  // handler that may only have an employeeId parsed from a query string).
+  const organizationIdSubquery = sql`(SELECT ${employees.organizationId} FROM ${employees} WHERE ${employees.id} = ${employeeId})`
   const tasksToInsert = DEFAULT_ONBOARDING_TASKS.map((t) => ({
     employeeId,
+    organizationId: organizationIdSubquery,
     title: t.title,
     description: t.description,
     category: t.category,
@@ -206,6 +211,7 @@ onboardingRoute.patch('/:id/toggle', async (c) => {
             .insert(notifications)
             .values({
               userId: targetUser.id,
+              organizationId: targetUser.organizationId,
               title: 'Parcours d’intégration complété ! 🎉',
               message: 'Félicitations, vous avez validé 100% de vos étapes d’onboarding.',
               type: 'success',
@@ -235,6 +241,7 @@ onboardingRoute.post(
       .insert(onboardingTasks)
       .values({
         employeeId: body.employeeId,
+        organizationId: newEmployee.organizationId,
         title: body.title,
         description: body.description,
         category: body.category,
